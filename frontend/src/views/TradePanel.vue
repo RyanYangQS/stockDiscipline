@@ -5,7 +5,7 @@
       <div class="header-left">
         <div class="logo">
           <span class="logo-icon">📈</span>
-          <span class="logo-text">个人股票交易纪律系统</span>
+          <span class="logo-text">股票交易纪律系统</span>
         </div>
         <nav class="header-nav">
           <router-link to="/" class="nav-btn" :class="{ active: $route.path === '/' }">
@@ -201,8 +201,8 @@
 /**
  * 交易面板视图
  */
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { klinecharts } from 'klinecharts'
+import { ref, computed, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { init, dispose } from 'klinecharts'
 import { getMarketOverview, getKlineData, screenStocks } from '@/api/stock'
 import { getPositions, createPosition } from '@/api/position'
 
@@ -324,7 +324,12 @@ const loadKline = async () => {
 const initChart = () => {
   nextTick(() => {
     if (chartRef.value) {
-      chart = klinecharts.init(chartRef.value, {
+      // 销毁旧图表
+      if (chart) {
+        dispose(chartRef.value)
+      }
+      // 创建新图表
+      chart = init(chartRef.value, {
         theme: 'dark'
       })
       chart.createIndicator('MA', true, { calcParams: [5, 10, 20, 60] })
@@ -371,6 +376,14 @@ onMounted(() => {
   
   // 定时刷新市场数据
   setInterval(loadMarketOverview, 30000)
+})
+
+// 组件卸载前清理
+onBeforeUnmount(() => {
+  if (chart && chartRef.value) {
+    dispose(chartRef.value)
+    chart = null
+  }
 })
 </script>
 

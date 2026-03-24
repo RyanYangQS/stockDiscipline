@@ -169,3 +169,76 @@ class MarketOverview(BaseModel):
     limit_up_count: int = Field(..., description="涨停数")
     limit_down_count: int = Field(..., description="跌停数")
     updated_at: datetime
+
+
+# ==================== 盘口数据 ====================
+
+class BidAskResponse(BaseModel):
+    """盘口数据响应(买卖五档)"""
+    code: str = Field(..., description="股票代码")
+    bid1: Optional[float] = Field(None, description="买一价")
+    bid1_volume: Optional[int] = Field(None, description="买一量")
+    bid2: Optional[float] = Field(None, description="买二价")
+    bid2_volume: Optional[int] = Field(None, description="买二量")
+    bid3: Optional[float] = Field(None, description="买三价")
+    bid3_volume: Optional[int] = Field(None, description="买三量")
+    bid4: Optional[float] = Field(None, description="买四价")
+    bid4_volume: Optional[int] = Field(None, description="买四量")
+    bid5: Optional[float] = Field(None, description="买五价")
+    bid5_volume: Optional[int] = Field(None, description="买五量")
+    ask1: Optional[float] = Field(None, description="卖一价")
+    ask1_volume: Optional[int] = Field(None, description="卖一量")
+    ask2: Optional[float] = Field(None, description="卖二价")
+    ask2_volume: Optional[int] = Field(None, description="卖二量")
+    ask3: Optional[float] = Field(None, description="卖三价")
+    ask3_volume: Optional[int] = Field(None, description="卖三量")
+    ask4: Optional[float] = Field(None, description="卖四价")
+    ask4_volume: Optional[int] = Field(None, description="卖四量")
+    ask5: Optional[float] = Field(None, description="卖五价")
+    ask5_volume: Optional[int] = Field(None, description="卖五量")
+    updated_at: datetime = Field(..., description="更新时间")
+
+
+# ==================== 分时数据 ====================
+
+class IntradayItem(BaseModel):
+    """分时数据项"""
+    timestamp: datetime = Field(..., description="时间戳")
+    price: float = Field(..., description="价格")
+    volume: int = Field(..., description="成交量")
+    avg_price: Optional[float] = Field(None, description="均价")
+
+
+class IntradayResponse(BaseModel):
+    """分时数据响应"""
+    code: str = Field(..., description="股票代码")
+    name: str = Field(..., description="股票名称")
+    data: List[IntradayItem] = Field(..., description="分时数据列表")
+
+
+# ==================== 分钟K线 ====================
+
+class MinuteKLineRequest(BaseModel):
+    """分钟K线请求模型"""
+    code: str = Field(..., description="股票代码")
+    period: str = Field(default="5", description="周期: 1/5/15/30/60分钟")
+    count: int = Field(default=48, ge=1, le=240, description="数据条数")
+
+
+class MinuteKLineItem(BaseModel):
+    """分钟K线数据项"""
+    timestamp: datetime = Field(..., description="时间戳")
+    open: float = Field(..., description="开盘价")
+    high: float = Field(..., description="最高价")
+    low: float = Field(..., description="最低价")
+    close: float = Field(..., description="收盘价")
+    volume: int = Field(..., description="成交量")
+    turnover: Optional[float] = Field(None, description="成交额")
+
+
+class MinuteKLineResponse(BaseModel):
+    """分钟K线响应模型"""
+    code: str = Field(..., description="股票代码")
+    name: str = Field(..., description="股票名称")
+    period: str = Field(..., description="周期")
+    data: List[MinuteKLineItem] = Field(..., description="分钟K线数据")

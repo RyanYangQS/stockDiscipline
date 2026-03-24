@@ -1,0 +1,31 @@
+INFO:     Started server process [24182]
+INFO:     Waiting for application startup.
+[32m2026-03-24 16:10:58[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m19[0m - [1m启动 股票交易纪律系统[0m
+2026-03-24 16:10:58,096 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-24 16:10:58,097 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stocks")
+2026-03-24 16:10:58,097 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stock_pool")
+2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("positions")
+2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("trade_rules")
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("signals")
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("kline_data")
+2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-24 16:10:58,100 INFO sqlalchemy.engine.Engine COMMIT
+[32m2026-03-24 16:10:58[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m21[0m - [1m数据库初始化完成[0m
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51890 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51890 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51896 - "GET / HTTP/1.1" 200 OK
+[32m2026-03-24 16:11:47[0m | [31m[1mERROR   [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m61[0m - [31m[1m获取股票列表失败: HTTPSConnectionPool(host='82.push2.eastmoney.com', port=443): Read timed out. (read timeout=15)[0m
+2026-03-24 16:11:47,058 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-24 16:11:47,064 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-24 16:11:47,064 INFO sqlalchemy.engine.Engine [generated in 0.00013s] ('holding',)
+INFO:     127.0.0.1:51943 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-24 16:11:49[0m | [31m[1mERROR   [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m158[0m - [31m[1m获取K线数据失败 000001: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61%2Cf116&ut=7eea3edcaed734bea9cbfc24409ed989&klt=101&fqt=1&secid=0.000001&beg=19700101&end=20500101 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remote end closed connection without response')))[0m

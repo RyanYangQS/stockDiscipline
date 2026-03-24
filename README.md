@@ -55,58 +55,58 @@ stockDiscipline/
 │   │   └── main.js            # 入口文件
 │   ├── package.json           # npm依赖
 │   └── vite.config.js         # Vite配置
-├── PRD-股票交易纪律系统.md      # 产品需求文档
+├── docs/                       # 📚 项目文档
+│   ├── README.md              # 文档索引
+│   ├── PRD-股票交易纪律系统.md  # 产品需求文档
+│   ├── QUICKSTART.md          # 快速启动指南
+│   └── ...                    # 更多文档
+├── demo/                       # 📺 演示版本
+│   ├── index.html             # 单文件演示
+│   ├── server.js              # 演示服务器
+│   └── README.md              # 演示说明
+├── start.sh                    # 🚀 一键启动脚本
+├── install.sh                  # 依赖安装脚本
 └── README.md                   # 项目说明
 ```
 
 ## 快速开始
+
+### 🚀 一键启动
+
+```bash
+# 添加执行权限(首次运行)
+chmod +x start.sh
+
+# 启动所有服务
+./start.sh
+```
+
+**就这么简单!** 脚本会自动:
+- ✅ 检查环境(Python、Node.js)
+- ✅ 创建虚拟环境
+- ✅ 自动安装所有依赖(智能处理网络问题)
+- ✅ 初始化数据库
+- ✅ 启动后端和前端服务
+
+### 🌐 访问服务
+
+启动成功后访问:
+- **后端API文档**: http://localhost:8000/docs
+- **前端页面**: http://localhost:3000
+
+### 🛑 停止服务
+
+```bash
+# 方式1: 按 Ctrl+C (如果在运行start.sh)
+# 方式2: 运行停止脚本
+./stop.sh
+```
 
 ### 环境要求
 
 - Python 3.11+
 - Node.js 18+
 - npm 或 pnpm
-
-### 后端启动
-
-```bash
-# 进入后端目录
-cd backend
-
-# 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 复制配置文件
-cp .env.example .env
-
-# 初始化数据库和默认数据
-python init_data.py
-
-# 启动服务
-uvicorn app.main:app --reload --port 8000
-```
-
-后端API文档: http://localhost:8000/docs
-
-### 前端启动
-
-```bash
-# 进入前端目录
-cd frontend
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
-
-前端地址: http://localhost:3000
 
 ## 核心功能
 
@@ -153,10 +153,36 @@ npm run dev
 
 ## 开发进度
 
-- [x] Phase 1: 需求分析与PRD设计
-- [x] Phase 2: 技术架构设计
-- [ ] Phase 3: 核心功能开发
+- [x] Phase 1: 需求分析与PRD设计 ✅
+- [x] Phase 2: 技术架构设计 ✅
+- [x] Phase 3: 核心功能开发 ✅
+  - [x] AI选股模块
+  - [x] K线图展示
+  - [x] 买卖信号引擎
+  - [x] 风控规则引擎
+  - [x] AkShare数据接口集成
 - [ ] Phase 4: 测试与优化
+
+## 📝 更多文档
+
+- [文档中心](./docs/README.md) - 完整文档索引
+- [AkShare接口文档](./docs/AKSHARE_INTEGRATION.md) - 数据接口使用说明
+- [klinecharts使用指南](./docs/KLINECHARTS_GUIDE.md) - 图表库开发文档
+- [交易规则说明](./docs/个人股票交易纪律系统规则.md) - 业务规则详解
+
+## 📺 演示版本
+
+- [demo/](./demo/README.md) - 单文件演示版本(无需安装，仅供快速预览)
+
+**注意**: 演示版本功能有限，推荐使用完整版本。完整版本启动命令: `./start.sh`
+
+## 💡 特色功能
+
+### 智能一键启动
+- 🤖 自动检测环境和依赖
+- 🔧 自动处理网络和代理问题
+- 📦 自动安装所有必需组件
+- 🚀 真正实现一键启动,零手动配置
 
 ## 许可证
 

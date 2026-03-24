@@ -1,33 +1,33 @@
 # 股票交易纪律系统 - 后端依赖
 
 # Web框架
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
-python-multipart==0.0.9
+fastapi>=0.109
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
 
 # 数据库
-sqlalchemy==2.0.25
-alembic==1.13.1
-aiosqlite==0.19.0
+sqlalchemy>=2.0
+alembic>=1.13
+aiosqlite>=0.19
+greenlet>=3.0  # SQLAlchemy异步支持
 
-# 数据处理
-pandas==2.2.0
-numpy==1.26.4
+# 数据处理(支持Python 3.13)
+pandas>=2.2
+numpy>=2.0  # 支持Python 3.13
 
 # 股票数据API
-akshare==1.12.60
-tushare==1.4.3
+akshare>=1.18  # 使用最新版本
 
 # 数据验证
-pydantic==2.6.1
-pydantic-settings==2.1.0
+pydantic>=2.6
+pydantic-settings>=2.1
 
 # 工具库
-python-dotenv==1.0.1
-loguru==0.7.2
-httpx==0.26.0
-redis==5.0.1
+python-dotenv>=1.0
+loguru>=0.7
+httpx>=0.26
+redis>=5.0
 
 # 测试
-pytest==8.0.0
-pytest-asyncio==0.23.4
+pytest>=8.0
+pytest-asyncio>=0.23

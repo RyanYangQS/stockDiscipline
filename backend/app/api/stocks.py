@@ -8,7 +8,9 @@ from app.core.database import get_db
 from app.schemas import (
     ScreeningRequest, ScreeningResponse, StockPoolItem,
     KLineRequest, KLineResponse, KLineItem,
-    MarketOverview
+    MarketOverview, BidAskResponse,
+    IntradayItem, IntradayResponse,
+    MinuteKLineItem, MinuteKLineResponse
 )
 from app.services import stock_service, screening_engine
 from datetime import datetime
@@ -100,3 +102,78 @@ async def get_market_overview():
     """
     overview = await stock_service.get_market_overview()
     return MarketOverview(**overview)
+
+
+@router.get("/bid-ask/{code}", response_model=BidAskResponse)
+async def get_bid_ask(code: str):
+    """
+    获取盘口数据(买卖五档)
+    
+    Args:
+        code: 股票代码
+    """
+    bid_ask = await stock_service.get_bid_ask_data(code)
+    
+    if not bid_ask:
+        raise HTTPException(status_code=404, detail="未找到盘口数据")
+    
+    return BidAskResponse(**bid_ask)
+
+
+@router.get("/intraday/{code}", response_model=IntradayResponse)
+async def get_intraday(code: str):
+    """
+    获取分时数据
+    
+    Args:
+        code: 股票代码
+    """
+    intraday = await stock_service.get_intraday_data(code)
+    
+    if not intraday:
+        raise HTTPException(status_code=404, detail="未找到分时数据")
+    
+    items = [IntradayItem(**item) for item in intraday]
+    
+    # 获取股票名称
+    quote = await stock_service.get_realtime_quote(code)
+    name = quote['name'] if quote else code
+    
+    return IntradayResponse(
+        code=code,
+        name=name,
+        data=items
+    )
+
+
+@router.get("/minute-kline/{code}", response_model=MinuteKLineResponse)
+async def get_minute_kline(
+    code: str,
+    period: str = "5",
+    count: int = 48
+):
+    """
+    获取分钟K线数据
+    
+    Args:
+        code: 股票代码
+        period: 周期 1/5/15/30/60分钟
+        count: 数据条数
+    """
+    klines = await stock_service.get_minute_kline(code, period, count)
+    
+    if not klines:
+        raise HTTPException(status_code=404, detail="未找到分钟K线数据")
+    
+    items = [MinuteKLineItem(**k) for k in klines]
+    
+    # 获取股票名称
+    quote = await stock_service.get_realtime_quote(code)
+    name = quote['name'] if quote else code
+    
+    return MinuteKLineResponse(
+        code=code,
+        name=name,
+        period=period,
+        data=items
+    )
