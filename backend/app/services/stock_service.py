@@ -202,6 +202,9 @@ class StockDataService:
             limit_up_count = len(df[df['涨跌幅'] >= 9.9])
             limit_down_count = len(df[df['涨跌幅'] <= -9.9])
             
+            # 获取大盘指数
+            indices = await self._get_market_indices()
+            
             logger.info(f"从AkShare获取市场概览成功")
             return {
                 'up_count': up_count,
@@ -210,6 +213,7 @@ class StockDataService:
                 'total_count': len(df),
                 'limit_up_count': limit_up_count,
                 'limit_down_count': limit_down_count,
+                'indices': indices,
                 'updated_at': datetime.now()
             }
         except Exception as e:
@@ -217,6 +221,45 @@ class StockDataService:
             # 使用模拟数据
             from app.services.data_fallback import DataFallbackService
             return DataFallbackService.generate_market_overview()
+    
+    async def _get_market_indices(self) -> List[Dict[str, Any]]:
+        """
+        获取大盘指数数据
+        
+        Returns:
+            大盘指数列表
+        """
+        try:
+            # 获取实时行情数据
+            df = ak.stock_zh_index_spot_em()
+            
+            # 主要指数代码
+            index_codes = {
+                'sh000001': '上证指数',
+                'sz399001': '深证成指',
+                'sz399006': '创业板指'
+            }
+            
+            indices = []
+            for _, row in df.iterrows():
+                code = row.get('代码', '')
+                if code in index_codes:
+                    price = float(row.get('最新价', 0))
+                    change = float(row.get('涨跌额', 0))
+                    change_pct = float(row.get('涨跌幅', 0))
+                    
+                    indices.append({
+                        'name': index_codes[code],
+                        'code': code,
+                        'price': price,
+                        'change': change,
+                        'change_pct': change_pct
+                    })
+            
+            return indices
+        except Exception as e:
+            logger.warning(f"获取大盘指数失败: {e}")
+            return []
     
     async def get_stock_info(self, code: str) -> Optional[Dict[str, Any]]:
         """

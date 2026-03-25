@@ -160,6 +160,15 @@ class RuleResponse(BaseModel):
 
 # ==================== 市场概览 ====================
 
+class IndexInfo(BaseModel):
+    """大盘指数信息"""
+    name: str = Field(..., description="指数名称")
+    code: str = Field(..., description="指数代码")
+    price: float = Field(..., description="当前点位")
+    change: float = Field(..., description="涨跌点数")
+    change_pct: float = Field(..., description="涨跌幅%")
+
+
 class MarketOverview(BaseModel):
     """市场概览响应"""
     up_count: int = Field(..., description="上涨家数")
@@ -168,6 +177,7 @@ class MarketOverview(BaseModel):
     total_count: int = Field(..., description="总股票数")
     limit_up_count: int = Field(..., description="涨停数")
     limit_down_count: int = Field(..., description="跌停数")
+    indices: List[IndexInfo] = Field(default=[], description="大盘指数列表")
     updated_at: datetime
 
 

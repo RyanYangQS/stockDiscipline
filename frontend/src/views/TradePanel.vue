@@ -4,22 +4,60 @@
     <header class="header">
       <div class="header-left">
         <div class="logo">
-          <span class="logo-icon">📈</span>
+          <span class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+              <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+          </span>
           <span class="logo-text">股票交易纪律系统</span>
         </div>
         <nav class="header-nav">
           <router-link to="/" class="nav-btn" :class="{ active: $route.path === '/' }">
-            📊 交易面板
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            交易面板
           </router-link>
           <router-link to="/screening" class="nav-btn">
-            🎯 AI选股
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+            AI选股
           </router-link>
           <router-link to="/rules" class="nav-btn">
-            📋 规则配置
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            规则配置
           </router-link>
         </nav>
       </div>
       <div class="header-right">
+        <!-- 大盘指数显示 -->
+        <div class="market-indices" v-if="marketOverview.indices && marketOverview.indices.length > 0">
+          <div 
+            v-for="index in marketOverview.indices" 
+            :key="index.code"
+            class="index-item"
+          >
+            <span class="index-name">{{ index.name }}</span>
+            <span :class="['index-price', index.change_pct >= 0 ? 'up' : 'down']">
+              {{ index.price.toFixed(2) }}
+            </span>
+            <span :class="['index-change', index.change_pct >= 0 ? 'up' : 'down']">
+              {{ index.change_pct >= 0 ? '+' : '' }}{{ index.change_pct.toFixed(2) }}%
+            </span>
+          </div>
+        </div>
+        
         <div class="market-status">
           <span>市场</span>
           <span class="up">↑ {{ marketOverview.up_count }}</span>
@@ -144,12 +182,25 @@
         <!-- 功能入口 -->
         <div class="entry-cards">
           <router-link to="/screening" class="entry-card">
-            <div class="entry-icon">🎯</div>
+            <div class="entry-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="6"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+              </svg>
+            </div>
             <div class="entry-title">AI选股</div>
             <div class="entry-sub">智能筛选标的</div>
           </router-link>
           <router-link to="/rules" class="entry-card">
-            <div class="entry-icon">📋</div>
+            <div class="entry-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
             <div class="entry-title">规则配置</div>
             <div class="entry-sub">自定义规则</div>
           </router-link>
@@ -157,26 +208,59 @@
 
         <!-- 买卖信号 -->
         <div class="panel">
-          <div class="panel-title">📋 买卖信号</div>
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            买卖信号
+          </div>
           <div v-for="signal in buySignals" :key="signal.id" class="signal-item buy" @click="showSignalDetail(signal)">
-            <div class="signal-type">🟢 {{ signal.signal_name }}</div>
+            <div class="signal-type">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+              {{ signal.signal_name }}
+            </div>
             <div class="signal-detail">{{ signal.reason }}</div>
             <div class="signal-price">建议价: ¥{{ signal.price?.toFixed(2) }}</div>
           </div>
           <div v-for="signal in sellSignals" :key="signal.id" class="signal-item sell" @click="showSignalDetail(signal)">
-            <div class="signal-type">⚠️ {{ signal.signal_name }}</div>
+            <div class="signal-type">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              {{ signal.signal_name }}
+            </div>
             <div class="signal-detail">{{ signal.reason }}</div>
             <div class="signal-price">触发价: ¥{{ signal.price?.toFixed(2) }}</div>
           </div>
           <div v-if="buySignals.length === 0 && sellSignals.length === 0" class="empty">
-            <div class="empty-icon">📊</div>
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+            </div>
             <div>暂无信号</div>
           </div>
         </div>
 
         <!-- 选股池 -->
         <div class="panel">
-          <div class="panel-title">🎯 今日选股池</div>
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+            今日选股池
+          </div>
           <div class="pool-tags">
             <el-tag 
               v-for="tag in poolTags" 
@@ -243,8 +327,22 @@
         <span class="status-item">🕐 {{ currentTime }}</span>
       </div>
       <div class="status-right">
-        <span class="status-item">📊 今日选股: {{ stockPool.length }} 只</span>
-        <span class="status-item">⚠️ 违规监控: 0 次</span>
+        <span class="status-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+          今日选股: {{ stockPool.length }} 只
+        </span>
+        <span class="status-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          违规监控: 0 次
+        </span>
       </div>
     </footer>
 
@@ -322,7 +420,8 @@ let refreshTimer = null
 const marketOverview = ref({
   up_count: 0,
   down_count: 0,
-  total_count: 0
+  total_count: 0,
+  indices: []
 })
 
 // 当前股票
@@ -934,7 +1033,10 @@ onBeforeUnmount(() => {
   gap: 12px;
   
   .logo-icon {
-    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #667eea;
     filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.5));
   }
   
@@ -956,6 +1058,9 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   
   .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 8px 18px;
     border-radius: 8px;
     font-size: 13px;
@@ -980,6 +1085,45 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+// 大盘指数样式
+.market-indices {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .index-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    font-size: 13px;
+    
+    .index-name {
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .index-price {
+      font-weight: 700;
+      font-size: 14px;
+      
+      &.up { color: #ef4444; }
+      &.down { color: #22c55e; }
+    }
+    
+    .index-change {
+      font-weight: 600;
+      font-size: 12px;
+      
+      &.up { color: #ef4444; }
+      &.down { color: #22c55e; }
+    }
+  }
 }
 
 .market-status {
@@ -1303,8 +1447,11 @@ onBeforeUnmount(() => {
   }
   
   .entry-icon {
-    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 8px;
+    color: #7c83fd;
   }
   
   .entry-title {
@@ -1327,9 +1474,16 @@ onBeforeUnmount(() => {
   padding: 14px;
   
   .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 12px;
+    
+    svg {
+      flex-shrink: 0;
+    }
   }
 }
 
@@ -1360,9 +1514,16 @@ onBeforeUnmount(() => {
   }
   
   .signal-type {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 600;
     font-size: 13px;
     margin-bottom: 6px;
+    
+    svg {
+      flex-shrink: 0;
+    }
   }
   
   .signal-detail {
@@ -1498,7 +1659,9 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.3);
   
   .empty-icon {
-    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 10px;
     opacity: 0.6;
   }

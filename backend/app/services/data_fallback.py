@@ -59,6 +59,39 @@ class DataFallbackService:
         down_count = total - up_count - random.randint(50, 200)
         flat_count = total - up_count - down_count
         
+        # 模拟大盘指数
+        sh_price = random.uniform(3000, 3500)
+        sz_price = random.uniform(10000, 12000)
+        cyb_price = random.uniform(2000, 2500)
+        
+        sh_change_pct = random.uniform(-2, 2)
+        sz_change_pct = random.uniform(-2.5, 2.5)
+        cyb_change_pct = random.uniform(-3, 3)
+        
+        indices = [
+            {
+                'name': '上证指数',
+                'code': 'sh000001',
+                'price': round(sh_price, 2),
+                'change': round(sh_price * sh_change_pct / 100, 2),
+                'change_pct': round(sh_change_pct, 2)
+            },
+            {
+                'name': '深证成指',
+                'code': 'sz399001',
+                'price': round(sz_price, 2),
+                'change': round(sz_price * sz_change_pct / 100, 2),
+                'change_pct': round(sz_change_pct, 2)
+            },
+            {
+                'name': '创业板指',
+                'code': 'sz399006',
+                'price': round(cyb_price, 2),
+                'change': round(cyb_price * cyb_change_pct / 100, 2),
+                'change_pct': round(cyb_change_pct, 2)
+            }
+        ]
+        
         return {
             'up_count': up_count,
             'down_count': down_count,
@@ -66,6 +99,7 @@ class DataFallbackService:
             'total_count': total,
             'limit_up_count': random.randint(20, 100),
             'limit_down_count': random.randint(5, 50),
+            'indices': indices,
             'updated_at': datetime.now()
         }
     
