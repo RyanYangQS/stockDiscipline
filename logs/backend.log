@@ -1,31 +1,305 @@
-INFO:     Started server process [24182]
+INFO:     Started server process [53810]
 INFO:     Waiting for application startup.
-[32m2026-03-24 16:10:58[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m19[0m - [1m启动 股票交易纪律系统[0m
-2026-03-24 16:10:58,096 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-03-24 16:10:58,097 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stocks")
-2026-03-24 16:10:58,097 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stock_pool")
-2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("positions")
-2026-03-24 16:10:58,098 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("trade_rules")
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("signals")
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("kline_data")
-2026-03-24 16:10:58,099 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-24 16:10:58,100 INFO sqlalchemy.engine.Engine COMMIT
-[32m2026-03-24 16:10:58[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m21[0m - [1m数据库初始化完成[0m
+[32m2026-03-25 13:57:42[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m19[0m - [1m启动 股票交易纪律系统[0m
+2026-03-25 13:57:42,860 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 13:57:42,860 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stocks")
+2026-03-25 13:57:42,860 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,861 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("stock_pool")
+2026-03-25 13:57:42,861 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,862 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("positions")
+2026-03-25 13:57:42,862 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,862 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("trade_rules")
+2026-03-25 13:57:42,862 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,863 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("signals")
+2026-03-25 13:57:42,863 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,863 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("kline_data")
+2026-03-25 13:57:42,863 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-03-25 13:57:42,863 INFO sqlalchemy.engine.Engine COMMIT
+[32m2026-03-25 13:57:42[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m21[0m - [1m数据库初始化完成[0m
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:51890 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51890 - "GET /openapi.json HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51896 - "GET / HTTP/1.1" 200 OK
-[32m2026-03-24 16:11:47[0m | [31m[1mERROR   [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m61[0m - [31m[1m获取股票列表失败: HTTPSConnectionPool(host='82.push2.eastmoney.com', port=443): Read timed out. (read timeout=15)[0m
-2026-03-24 16:11:47,058 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-03-24 16:11:47,064 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+[32m2026-03-25 13:57:51[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:60979 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 13:57:54[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 13:57:59[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:61003 - "GET /api/stock/kline/000001?count=3 HTTP/1.1" 200 OK
+[32m2026-03-25 13:58:10[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:61124 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 13:58:21[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:61220 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 13:58:51[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:61468 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 13:59:21[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:61695 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 13:59:51[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:61950 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:00:21[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62181 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+  0%|          | 0/58 [00:00<?, ?it/s]  2%|▏         | 1/58 [00:01<01:07,  1.18s/it]                                              [32m2026-03-25 14:00:29[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:00:29[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:00:29[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:00:29[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+2026-03-25 14:00:29,843 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:00:29,852 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
 FROM positions 
 WHERE positions.status = ?
-2026-03-24 16:11:47,064 INFO sqlalchemy.engine.Engine [generated in 0.00013s] ('holding',)
-INFO:     127.0.0.1:51943 - "POST /api/stock/screening HTTP/1.1" 200 OK
-[32m2026-03-24 16:11:49[0m | [31m[1mERROR   [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m158[0m - [31m[1m获取K线数据失败 000001: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61%2Cf116&ut=7eea3edcaed734bea9cbfc24409ed989&klt=101&fqt=1&secid=0.000001&beg=19700101&end=20500101 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remote end closed connection without response')))[0m
+2026-03-25 14:00:29,852 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('holding',)
+[32m2026-03-25 14:00:29[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:00:35[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:62182 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:00:35[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62215 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62185 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:00:35[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:00:40[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:00:46[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:00:46[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:00:46[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:00:46[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+[32m2026-03-25 14:00:46[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62254 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62218 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:00:51[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:00:51[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:00:51[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:00:51[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+INFO:     127.0.0.1:62220 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:00:51[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:00:57[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:62255 - "POST /api/stock/screening HTTP/1.1" 200 OK
+2026-03-25 14:00:57,268 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-25 14:00:57,268 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:00:57,268 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:00:57,269 INFO sqlalchemy.engine.Engine [cached since 27.42s ago] ('holding',)
+[32m2026-03-25 14:00:57[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62516 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62257 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:00:57,270 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:00:57,271 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:00:57,271 INFO sqlalchemy.engine.Engine [cached since 27.42s ago] ('holding',)
+INFO:     127.0.0.1:62184 - "GET /api/position/list HTTP/1.1" 200 OK
+2026-03-25 14:00:57,272 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-25 14:00:57,273 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:62217 - "GET /api/position/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62256 - "GET /api/position/list HTTP/1.1" 200 OK
+[32m2026-03-25 14:01:11[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62640 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:01:17[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:01:17[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:01:17[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:01:17[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+2026-03-25 14:01:17,989 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:01:17,989 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:01:17,989 INFO sqlalchemy.engine.Engine [cached since 48.14s ago] ('holding',)
+[32m2026-03-25 14:01:17[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:01:23[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:62641 - "POST /api/stock/screening HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62645 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:01:23,632 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:62642 - "GET /api/position/list HTTP/1.1" 200 OK
+[32m2026-03-25 14:01:41[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:62897 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:02:11[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:63142 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:02:41[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:63397 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:11[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:63652 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:31[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:03:31[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:03:31[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:03:31[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+2026-03-25 14:03:31,277 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:03:31,277 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:03:31,277 INFO sqlalchemy.engine.Engine [cached since 181.4s ago] ('holding',)
+INFO:     127.0.0.1:63762 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:31[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:63766 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:31[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:03:37[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:63768 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:03:37,062 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:63765 - "GET /api/position/list HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:41[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:63922 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:03:53[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64038 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:04:11[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64170 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:04:23[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64275 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:04:41[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64424 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:04:54[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64535 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:05:11[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64669 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:05:24[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64768 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:05:41[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:64923 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:05:54[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:65030 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:06:24[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:65254 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:06:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:65432 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:07:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:49578 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:07:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:49582 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:08:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:50055 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:08:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:50058 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:09:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:50539 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:09:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:50543 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:10:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51012 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:10:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51015 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:11:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51496 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:11:45[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51499 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:12:27[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51831 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:12:27[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51834 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+2026-03-25 14:12:38,092 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:12:38,096 INFO sqlalchemy.engine.Engine SELECT trade_rules.id, trade_rules.name, trade_rules.category, trade_rules.rule_type, trade_rules.condition, trade_rules.description, trade_rules.is_system, trade_rules.is_enabled, trade_rules.priority, trade_rules.created_at, trade_rules.updated_at 
+FROM trade_rules 
+WHERE trade_rules.is_system = 1
+2026-03-25 14:12:38,096 INFO sqlalchemy.engine.Engine [generated in 0.00053s] ()
+2026-03-25 14:12:38,099 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:12:38,100 INFO sqlalchemy.engine.Engine SELECT trade_rules.id, trade_rules.name, trade_rules.category, trade_rules.rule_type, trade_rules.condition, trade_rules.description, trade_rules.is_system, trade_rules.is_enabled, trade_rules.priority, trade_rules.created_at, trade_rules.updated_at 
+FROM trade_rules 
+WHERE trade_rules.is_system = 0
+2026-03-25 14:12:38,100 INFO sqlalchemy.engine.Engine [generated in 0.00022s] ()
+2026-03-25 14:12:38,101 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-25 14:12:38,102 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51931 - "GET /api/rule/system HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51933 - "GET /api/rule/custom HTTP/1.1" 200 OK
+[32m2026-03-25 14:12:40[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51965 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:12:47[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:12:47[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:12:47[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:12:47[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+[32m2026-03-25 14:12:47[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:12:53[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+2026-03-25 14:12:53,117 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:12:53,118 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:12:53,118 INFO sqlalchemy.engine.Engine [cached since 743.2s ago] ('holding',)
+[32m2026-03-25 14:12:53[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:51982 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51970 - "POST /api/stock/screening HTTP/1.1" 200 OK
+2026-03-25 14:12:53,118 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:12:53,119 INFO sqlalchemy.engine.Engine SELECT trade_rules.id, trade_rules.name, trade_rules.category, trade_rules.rule_type, trade_rules.condition, trade_rules.description, trade_rules.is_system, trade_rules.is_enabled, trade_rules.priority, trade_rules.created_at, trade_rules.updated_at 
+FROM trade_rules 
+WHERE trade_rules.is_system = 0
+2026-03-25 14:12:53,119 INFO sqlalchemy.engine.Engine [cached since 15.02s ago] ()
+INFO:     127.0.0.1:51971 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:12:53,119 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:12:53,119 INFO sqlalchemy.engine.Engine SELECT trade_rules.id, trade_rules.name, trade_rules.category, trade_rules.rule_type, trade_rules.condition, trade_rules.description, trade_rules.is_system, trade_rules.is_enabled, trade_rules.priority, trade_rules.created_at, trade_rules.updated_at 
+FROM trade_rules 
+WHERE trade_rules.is_system = 1
+2026-03-25 14:12:53,119 INFO sqlalchemy.engine.Engine [cached since 15.02s ago] ()
+2026-03-25 14:12:53,120 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-25 14:12:53,120 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51972 - "GET /api/position/list HTTP/1.1" 200 OK
+2026-03-25 14:12:53,124 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:51997 - "GET /api/rule/custom HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51998 - "GET /api/rule/system HTTP/1.1" 200 OK
+  0%|          | 0/58 [00:00<?, ?it/s]  2%|▏         | 1/58 [00:03<03:23,  3.56s/it]                                              [32m2026-03-25 14:13:10[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:13:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:13:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:13:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+[32m2026-03-25 14:13:10[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:13:16[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:52110 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:13:16[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:13:21[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:13:21[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:52125 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52114 - "GET /api/stock/kline/000001?period=weekly&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:13:21,920 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:13:21,921 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:13:21,921 INFO sqlalchemy.engine.Engine [cached since 772.1s ago] ('holding',)
+INFO:     127.0.0.1:52119 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:13:21[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+  0%|          | 0/58 [00:00<?, ?it/s]  2%|▏         | 1/58 [00:01<01:21,  1.43s/it]  3%|▎         | 2/58 [00:02<01:12,  1.29s/it]  5%|▌         | 3/58 [00:04<01:14,  1.35s/it]  7%|▋         | 4/58 [00:05<01:25,  1.58s/it]                                              [32m2026-03-25 14:13:37[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:13:37[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:13:43[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:13:43[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:13:48[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+INFO:     127.0.0.1:52127 - "GET /api/stock/kline/000001?period=minute&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:13:48[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:52149 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52130 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:13:54[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:13:54[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:13:54[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:13:54[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+INFO:     127.0.0.1:52132 - "GET /api/stock/kline/000001?period=weekly&count=60 HTTP/1.1" 200 OK
+[32m2026-03-25 14:13:54[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+  0%|          | 0/58 [00:00<?, ?it/s]                                      [32m2026-03-25 14:14:04[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+2026-03-25 14:14:04,816 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:14:04,816 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:14:04,816 INFO sqlalchemy.engine.Engine [cached since 814.9s ago] ('holding',)
+INFO:     127.0.0.1:52150 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:14:04[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:52389 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52151 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+2026-03-25 14:14:04,817 INFO sqlalchemy.engine.Engine ROLLBACK
+[32m2026-03-25 14:14:10[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_stock_list[0m:[36m65[0m - [33m[1m从AkShare获取股票列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:14:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m53[0m - [1m获取到 10 只股票[0m
+[32m2026-03-25 14:14:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 exclude_st, 剩余 10 只[0m
+[32m2026-03-25 14:14:10[0m | [1mINFO    [0m | [36mapp.services.screening_engine[0m:[36mscreen_stocks[0m:[36m59[0m - [1m应用排除规则 market_cap, 剩余 0 只[0m
+2026-03-25 14:14:10,440 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-25 14:14:10,440 INFO sqlalchemy.engine.Engine SELECT positions.id, positions.stock_code, positions.stock_name, positions.cost_price, positions.quantity, positions.current_price, positions.profit, positions.profit_pct, positions.stop_loss_price, positions.take_profit_price, positions.buy_date, positions.status, positions.created_at, positions.updated_at 
+FROM positions 
+WHERE positions.status = ?
+2026-03-25 14:14:10,440 INFO sqlalchemy.engine.Engine [cached since 820.6s ago] ('holding',)
+[32m2026-03-25 14:14:10[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:52608 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52604 - "POST /api/stock/screening HTTP/1.1" 200 OK
+[32m2026-03-25 14:14:10[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_kline_data[0m:[36m126[0m - [1m开发模式: 使用模拟K线数据 000001[0m
+[32m2026-03-25 14:14:16[0m | [33m[1mWARNING [0m | [36mapp.services.stock_service[0m:[36mget_realtime_quote[0m:[36m102[0m - [33m[1m从AkShare获取实时行情失败 000001: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 使用模拟数据[0m
+[32m2026-03-25 14:14:16[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:52857 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52610 - "GET /api/stock/kline/000001?period=daily&count=60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52126 - "GET /api/position/list HTTP/1.1" 200 OK
+2026-03-25 14:14:16,391 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-25 14:14:16,392 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:52152 - "GET /api/position/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52607 - "GET /api/position/list HTTP/1.1" 200 OK
+[32m2026-03-25 14:14:46[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:53104 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:15:16[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:53348 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:15:46[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:53602 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+[32m2026-03-25 14:16:16[0m | [1mINFO    [0m | [36mapp.services.stock_service[0m:[36mget_market_overview[0m:[36m180[0m - [1m开发模式: 使用模拟市场概览[0m
+INFO:     127.0.0.1:53847 - "GET /api/stock/market/overview HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[32m2026-03-25 14:16:39[0m | [1mINFO    [0m | [36mapp.main[0m:[36mlifespan[0m:[36m26[0m - [1m应用关闭[0m
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53810]
