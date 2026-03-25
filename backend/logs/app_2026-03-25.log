@@ -2793,3 +2793,30 @@
 2026-03-25 16:53:30 | INFO     | app.services.stock_service:get_realtime_quote:88 - 开发模式: 使用模拟实时行情 000001
 2026-03-25 16:53:58 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
 2026-03-25 16:54:28 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:54:58 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:55:28 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:55:58 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:56:28 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:57:31 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:57:31 | INFO     | app.services.stock_service:get_stock_list:35 - 开发模式: 使用模拟股票列表 all
+2026-03-25 16:57:31 | INFO     | app.services.screening_engine:screen_stocks:53 - 获取到 10 只股票
+2026-03-25 16:57:31 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 exclude_st, 剩余 10 只
+2026-03-25 16:57:31 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 market_cap, 剩余 0 只
+2026-03-25 16:57:45 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:57:58 | INFO     | app.services.stock_service:get_stock_list:35 - 开发模式: 使用模拟股票列表 all
+2026-03-25 16:57:58 | INFO     | app.services.screening_engine:screen_stocks:53 - 获取到 10 只股票
+2026-03-25 16:57:58 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 exclude_st, 剩余 10 只
+2026-03-25 16:57:58 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 market_cap, 剩余 0 只
+2026-03-25 16:57:58 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:02 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:12 | INFO     | app.services.stock_service:get_stock_list:35 - 开发模式: 使用模拟股票列表 all
+2026-03-25 16:58:12 | INFO     | app.services.screening_engine:screen_stocks:53 - 获取到 10 只股票
+2026-03-25 16:58:12 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 exclude_st, 剩余 10 只
+2026-03-25 16:58:12 | INFO     | app.services.screening_engine:screen_stocks:59 - 应用排除规则 market_cap, 剩余 0 只
+2026-03-25 16:58:12 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:28 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:32 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:37 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:42 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:57 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览
+2026-03-25 16:58:58 | INFO     | app.services.stock_service:get_market_overview:192 - 开发模式: 使用模拟市场概览

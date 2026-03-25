@@ -280,9 +280,34 @@
  * 交易面板视图
  */
 import { ref, computed, onMounted, nextTick, onBeforeUnmount } from 'vue'
-import { init, dispose } from 'klinecharts'
+import { init, dispose, registerIndicator } from 'klinecharts'
 import { getMarketOverview, getKlineData, screenStocks } from '@/api/stock'
 import { getPositions, createPosition } from '@/api/position'
+
+/**
+ * 注册自定义均价指标（用于分时图）
+ */
+registerIndicator({
+  name: 'AVG',
+  shortName: '均价',
+  precision: 2,
+  calcParams: [],
+  figures: [
+    { 
+      key: 'avg', 
+      title: '均价: ', 
+      type: 'line',
+      styles: () => ({
+        style: 'solid',
+        color: '#FF9800',
+        size: 1.5
+      })
+    }
+  ],
+  calc: (dataList) => {
+    return dataList.map(item => ({ avg: item.vwap || item.close }))
+  }
+})
 
 // 响应式数据
 const currentTime = ref('')
@@ -677,18 +702,8 @@ const initMinuteChart = () => {
       // 创建成交量面板
       minuteChart.createIndicator('VOL', false, { height: 80 })
       
-      // 在主图上叠加均价线指标
-      minuteChart.createIndicator({
-        name: 'AVG',
-        shortName: '均价',
-        precision: 2,
-        calcParams: [],
-        shouldOhlc: false,
-        plots: [{ key: 'avg', title: '均价: ', type: 'line', color: '#FF9800' }],
-        calcTechnicalIndicator: (dataList) => {
-          return dataList.map(item => ({ avg: item.vwap || item.close }))
-        }
-      }, true, { id: 'candle_pane' })
+      // 在主图上叠加均价线指标（已全局注册）
+      minuteChart.createIndicator('AVG', true, { id: 'candle_pane' })
     }
   })
 }
