@@ -4,13 +4,40 @@
     <header class="header">
       <div class="header-left">
         <div class="logo">
-          <span class="logo-icon">📈</span>
-          <span class="logo-text">个人股票交易纪律系统</span>
+          <span class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+              <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+          </span>
+          <span class="logo-text">镇金仓</span>
         </div>
         <nav class="header-nav">
-          <router-link to="/" class="nav-btn">📊 交易面板</router-link>
-          <router-link to="/screening" class="nav-btn">🎯 AI选股</router-link>
-          <router-link to="/rules" class="nav-btn active">📋 规则配置</router-link>
+          <router-link to="/" class="nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            交易面板
+          </router-link>
+          <router-link to="/screening" class="nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+            AI选股
+          </router-link>
+          <router-link to="/rules" class="nav-btn active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            规则配置
+          </router-link>
         </nav>
       </div>
     </header>
@@ -24,19 +51,41 @@
             <div class="tab-header">
               <p class="tab-desc">系统内置规则根据您的《个人股票交易纪律系统规则》自动导入，无法删除或修改核心参数。</p>
             </div>
-            <el-table :data="systemRules" style="width: 100%">
+            <el-table :data="systemRules" row-key="id" height="calc(100vh - 220px)" style="width: 100%">
               <el-table-column prop="name" label="规则名称" width="140" />
               <el-table-column prop="category" label="分类" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="row.category === 'exclude' ? 'danger' : row.category === 'core' ? 'success' : 'warning'" size="small">
-                    {{ row.category === 'exclude' ? '排除' : row.category === 'core' ? '核心' : '风控' }}
-                  </el-tag>
+                  <div v-memo="[row.id, row.category]">
+                    <el-tag :type="row.category === 'exclude' ? 'danger' : row.category === 'core' ? 'success' : 'warning'" size="small">
+                      {{ row.category === 'exclude' ? '排除' : row.category === 'core' ? '核心' : '风控' }}
+                    </el-tag>
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column prop="description" label="规则说明" />
-              <el-table-column prop="is_enabled" label="状态" width="80">
+              <el-table-column prop="is_enabled" label="状态" width="120">
                 <template #default="{ row }">
-                  <el-switch v-model="row.is_enabled" disabled />
+                  <div v-memo="[row.id, row.is_enabled]">
+                    <span 
+                      class="status-tag"
+                      :class="row.is_enabled ? 'status-enabled' : 'status-disabled'"
+                    >
+                      {{ row.is_enabled ? '已启用' : '已禁用' }}
+                    </span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <div v-memo="[row.id, row.is_enabled]">
+                    <button 
+                      class="custom-btn"
+                      :class="row.is_enabled ? 'btn-danger' : 'btn-success'"
+                      @click="toggleSystemRule(row)"
+                    >
+                      {{ row.is_enabled ? '禁用' : '启用' }}
+                    </button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -48,7 +97,7 @@
               <p class="tab-desc">创建您个人的选股规则，补充或替代系统规则</p>
               <el-button type="primary" size="small" @click="addCustomRule">+ 新增规则</el-button>
             </div>
-            <el-table :data="customRules" style="width: 100%">
+            <el-table :data="customRules" height="calc(100vh - 280px)" style="width: 100%">
               <el-table-column prop="name" label="规则名称" width="140">
                 <template #default="{ row }">
                   <el-input v-if="row.editing" v-model="row.name" size="small" />
@@ -72,21 +121,30 @@
                   <el-switch v-model="row.is_enabled" @change="toggleRule(row)" />
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="120">
+              <el-table-column label="操作" width="150">
                 <template #default="{ row }">
-                  <template v-if="row.editing">
-                    <el-button type="success" size="small" link @click="saveRule(row)">保存</el-button>
-                    <el-button size="small" link @click="row.editing = false">取消</el-button>
-                  </template>
-                  <template v-else>
-                    <el-button type="primary" size="small" link @click="row.editing = true">编辑</el-button>
-                    <el-button type="danger" size="small" link @click="deleteRule(row)">删除</el-button>
-                  </template>
+                  <div class="action-buttons">
+                    <template v-if="row.editing">
+                      <el-button type="success" size="small" @click="saveRule(row)">保存</el-button>
+                      <el-button type="default" size="small" @click="row.editing = false">取消</el-button>
+                    </template>
+                    <template v-else>
+                      <el-button type="primary" size="small" @click="row.editing = true">编辑</el-button>
+                      <el-button type="danger" size="small" @click="deleteRule(row)">删除</el-button>
+                    </template>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
             <div v-if="customRules.length === 0" class="empty-state">
-              <div class="empty-icon">📝</div>
+              <div class="empty-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+              </div>
               <p>暂无自定义规则</p>
             </div>
           </el-tab-pane>
@@ -96,7 +154,7 @@
             <div class="tab-header">
               <p class="tab-desc warning">以下风控参数经过历史验证，修改可能导致风险扩大。</p>
             </div>
-            <el-table :data="riskRules" style="width: 100%">
+            <el-table :data="riskRules" height="calc(100vh - 280px)" style="width: 100%">
               <el-table-column prop="name" label="规则名称" width="160" />
               <el-table-column prop="description" label="说明" />
               <el-table-column prop="value" label="当前值" width="100">
@@ -106,16 +164,18 @@
                 </template>
               </el-table-column>
               <el-table-column prop="default" label="默认值" width="100" />
-              <el-table-column label="操作" width="120">
+              <el-table-column label="操作" width="150">
                 <template #default="{ row }">
-                  <template v-if="row.editing">
-                    <el-button type="success" size="small" link @click="saveRiskRule(row)">保存</el-button>
-                    <el-button size="small" link @click="row.editing = false">取消</el-button>
-                  </template>
-                  <template v-else>
-                    <el-button type="primary" size="small" link @click="row.editing = true">修改</el-button>
-                    <el-button size="small" link @click="resetRiskRule(row)">重置</el-button>
-                  </template>
+                  <div class="action-buttons">
+                    <template v-if="row.editing">
+                      <el-button type="success" size="small" @click="saveRiskRule(row)">保存</el-button>
+                      <el-button type="default" size="small" @click="row.editing = false">取消</el-button>
+                    </template>
+                    <template v-else>
+                      <el-button type="primary" size="small" @click="row.editing = true">修改</el-button>
+                      <el-button type="default" size="small" @click="resetRiskRule(row)">重置</el-button>
+                    </template>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -130,7 +190,7 @@
 /**
  * 规则配置视图
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { getSystemRules, getCustomRules, createRule, toggleRule, deleteRule } from '@/api/rule'
 import { ElMessage } from 'element-plus'
 
@@ -227,6 +287,14 @@ const toggleRuleStatus = async (rule) => {
   }
 }
 
+/**
+ * 切换系统规则的启用/禁用状态
+ * @param {Object} rule - 要切换状态的规则对象
+ */
+const toggleSystemRule = (rule) => {
+  rule.is_enabled = !rule.is_enabled
+}
+
 const saveRiskRule = (rule) => {
   rule.editing = false
   ElMessage.success('风控规则已保存')
@@ -292,6 +360,9 @@ onMounted(() => {
   border-radius: 10px;
   
   .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 8px 18px;
     border-radius: 8px;
     font-size: 13px;
@@ -299,6 +370,11 @@ onMounted(() => {
     color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
     transition: all 0.25s;
+    
+    svg {
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
     
     &:hover {
       color: rgba(255, 255, 255, 0.85);
@@ -323,6 +399,143 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   padding: 20px;
+  
+  // Tab样式优化
+  :deep(.el-tabs__nav-wrap::after) {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  :deep(.el-tabs__item) {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0 20px;
+    height: 44px;
+    line-height: 44px;
+    
+    &:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    &.is-active {
+      color: #667eea;
+      font-weight: 600;
+    }
+  }
+  
+  :deep(.el-tabs__active-bar) {
+    background-color: #667eea;
+    height: 3px;
+  }
+  
+  // 表格按钮样式优化
+  :deep(.el-button--small) {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border: none;
+    transition: none !important;
+    animation: none !important;
+    
+    &.el-button--primary {
+      background: #3b82f6;
+      color: #ffffff;
+      
+      &:hover {
+        background: #2563eb;
+        color: #ffffff;
+      }
+    }
+    
+    &.el-button--success,
+    &.btn-success {
+      background: #10b981;
+      color: #ffffff;
+      
+      &:hover {
+        background: #059669;
+        color: #ffffff;
+      }
+    }
+    
+    &.el-button--danger,
+    &.btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+      
+      &:hover {
+        background: #dc2626;
+        color: #ffffff;
+      }
+    }
+    
+    &.el-button--default {
+      background: #4b5563;
+      color: #ffffff;
+      
+      &:hover {
+        background: #374151;
+        color: #ffffff;
+      }
+    }
+  }
+  
+  // Switch样式
+  :deep(.el-switch) {
+    &.is-disabled {
+      opacity: 0.5;
+    }
+  }
+  
+  // Tag样式
+  :deep(.el-tag) {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  // 表格样式
+  :deep(.el-table) {
+    background: transparent;
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+    
+    // 全局禁用表格内所有动画
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+    
+    th.el-table__cell {
+      background: rgba(255, 255, 255, 0.03);
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    
+    td.el-table__cell {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    
+    .el-table__row {
+      &:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+    }
+    
+    // 禁用表格行过渡动画
+    .el-table__row,
+    .el-table__body tr {
+      transition: none !important;
+      animation: none !important;
+    }
+    
+    // 禁用单元格过渡动画
+    .el-table__cell {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
 }
 
 .tab-header {
@@ -344,19 +557,82 @@ onMounted(() => {
   }
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .empty-state {
   text-align: center;
   padding: 40px 20px;
   color: rgba(255, 255, 255, 0.4);
   
   .empty-icon {
-    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 12px;
+    opacity: 0.6;
   }
 }
 
 .value {
   color: #a78bfa;
   font-weight: 700;
+}
+
+// 状态标签样式
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  
+  &.status-enabled {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+  }
+  
+  &.status-disabled {
+    background: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+  }
+}
+
+// 自定义按钮样式
+.custom-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: none !important;
+  animation: none !important;
+  
+  &.btn-success {
+    background: #10b981;
+    color: #ffffff;
+    
+    &:hover {
+      background: #059669;
+    }
+  }
+  
+  &.btn-danger {
+    background: #ef4444;
+    color: #ffffff;
+    
+    &:hover {
+      background: #dc2626;
+    }
+  }
 }
 </style>

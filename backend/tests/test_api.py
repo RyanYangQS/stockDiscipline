@@ -19,7 +19,7 @@ async def test_root(async_client):
     response = await async_client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "股票交易纪律系统"
+    assert data["name"] == "镇金仓"
     assert data["status"] == "running"
 
 

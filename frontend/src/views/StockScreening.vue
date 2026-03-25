@@ -4,13 +4,40 @@
     <header class="header">
       <div class="header-left">
         <div class="logo">
-          <span class="logo-icon">📈</span>
-          <span class="logo-text">个人股票交易纪律系统</span>
+          <span class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+              <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+          </span>
+          <span class="logo-text">镇金仓</span>
         </div>
         <nav class="header-nav">
-          <router-link to="/" class="nav-btn">📊 交易面板</router-link>
-          <router-link to="/screening" class="nav-btn active">🎯 AI选股</router-link>
-          <router-link to="/rules" class="nav-btn">📋 规则配置</router-link>
+          <router-link to="/" class="nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            交易面板
+          </router-link>
+          <router-link to="/screening" class="nav-btn active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+            AI选股
+          </router-link>
+          <router-link to="/rules" class="nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            规则配置
+          </router-link>
         </nav>
       </div>
     </header>
@@ -21,7 +48,13 @@
         <!-- 选股条件 -->
         <div class="conditions-panel">
           <div class="panel-header">
-            <h2>🔍 选股条件</h2>
+            <h2>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              选股条件
+            </h2>
           </div>
           
           <div class="condition-group">
@@ -66,7 +99,14 @@
         <!-- 选股结果 -->
         <div class="results-panel">
           <div class="panel-header">
-            <h2>📊 选股结果</h2>
+            <h2>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+              选股结果
+            </h2>
             <span v-if="results.length > 0" class="result-count">共 {{ results.length }} 只</span>
           </div>
           
@@ -111,7 +151,12 @@
           </el-table>
           
           <div v-else class="empty-state">
-            <div class="empty-icon">🔍</div>
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
             <p>选择条件后点击"开始选股"</p>
           </div>
         </div>
@@ -229,6 +274,9 @@ const viewDetail = (stock) => {
   border-radius: 10px;
   
   .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 8px 18px;
     border-radius: 8px;
     font-size: 13px;
@@ -236,6 +284,11 @@ const viewDetail = (stock) => {
     color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
     transition: all 0.25s;
+    
+    svg {
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
     
     &:hover {
       color: rgba(255, 255, 255, 0.85);
@@ -273,6 +326,17 @@ const viewDetail = (stock) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    
+    svg {
+      flex-shrink: 0;
+    }
+  }
   margin-bottom: 20px;
   
   h2 {
@@ -322,8 +386,11 @@ const viewDetail = (stock) => {
   color: rgba(255, 255, 255, 0.4);
   
   .empty-icon {
-    font-size: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 16px;
+    opacity: 0.6;
   }
 }
 

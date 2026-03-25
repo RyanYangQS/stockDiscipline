@@ -10,7 +10,7 @@
               <polyline points="16 7 22 7 22 13"></polyline>
             </svg>
           </span>
-          <span class="logo-text">股票交易纪律系统</span>
+          <span class="logo-text">镇金仓</span>
         </div>
         <nav class="header-nav">
           <router-link to="/" class="nav-btn" :class="{ active: $route.path === '/' }">
@@ -294,7 +294,13 @@
 
         <!-- 持仓管理 -->
         <div class="panel">
-          <div class="panel-title">💼 持仓管理</div>
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            持仓管理
+          </div>
           <div v-for="pos in positions" :key="pos.id" class="position-item">
             <div class="pos-info">
               <div class="pos-name">{{ pos.stock_name }}</div>
@@ -347,7 +353,16 @@
     </footer>
 
     <!-- 录入持仓弹窗 -->
-    <el-dialog v-model="showPositionDialog" title="💼 录入持仓" width="450px">
+    <el-dialog v-model="showPositionDialog" width="450px">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+          录入持仓
+        </div>
+      </template>
       <el-form :model="positionForm" label-width="80px" size="small">
         <el-form-item label="股票代码">
           <el-input v-model="positionForm.stock_code" placeholder="如: 000001" />
@@ -1068,6 +1083,11 @@ onBeforeUnmount(() => {
     color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
     transition: all 0.25s;
+    
+    svg {
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
     
     &:hover {
       color: rgba(255, 255, 255, 0.85);

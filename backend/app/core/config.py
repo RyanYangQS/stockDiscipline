@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """应用配置类"""
     
     # 应用基础配置
-    APP_NAME: str = "股票交易纪律系统"
+    APP_NAME: str = "镇金仓"
     APP_ENV: str = "development"
     DEBUG: bool = True
     

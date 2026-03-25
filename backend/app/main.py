@@ -1,5 +1,5 @@
 """
-股票交易纪律系统 - FastAPI主应用
+镇金仓 - FastAPI主应用
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
