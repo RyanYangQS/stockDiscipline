@@ -87,7 +87,7 @@ export ALL_PROXY=""
 
 # 检查并安装后端依赖(检测所有核心依赖)
 check_dependencies() {
-    python -c "import fastapi, uvicorn, sqlalchemy, pandas, numpy, akshare, pydantic, loguru" 2>/dev/null
+    python -c "import fastapi, uvicorn, sqlalchemy, pandas, numpy, pytdx, pydantic, loguru" 2>/dev/null
 }
 
 if ! check_dependencies; then
@@ -118,9 +118,9 @@ if ! check_dependencies; then
     }
     
     show_progress 4 5 "安装股票数据API..."
-    pip install "akshare>=1.18" --quiet || {
+    pip install "pytdx>=1.72" --quiet || {
         log_warning "安装失败，尝试使用阿里云镜像..."
-        pip install "akshare>=1.18" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --quiet
+        pip install "pytdx>=1.72" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --quiet
     }
     
     show_progress 5 5 "安装其他依赖..."

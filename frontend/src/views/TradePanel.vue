@@ -394,7 +394,7 @@
  */
 import { ref, computed, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { init, dispose, registerIndicator } from 'klinecharts'
-import { getMarketOverview, getKlineData, screenStocks } from '@/api/stock'
+import { getMarketOverview, getKlineData, screenStocks, getIntradayData, getRealtimeQuote } from '@/api/stock'
 import { getPositions, createPosition } from '@/api/position'
 
 /**
@@ -449,19 +449,19 @@ const currentStock = ref({
 
 // 分时图数据
 const minuteData = ref({
-  preClose: 12.50,   // 昨收
-  open: 12.55,       // 今开
-  high: 14.95,       // 最高（约+20%）
-  low: 10.50,        // 最低（约-16%）
-  volume: 125634,    // 成交量（手）
-  amount: 15862345,  // 成交额（元）
-  turnoverRate: 2.5, // 换手率
-  amplitude: 35.6,   // 振幅（%）
-  marketCap: 2450,   // 总市值（亿）
-  totalShares: 194.06, // 总股本（亿）
-  circulationCap: 2450, // 流通值（亿）
-  peRatio: 4.97,     // 市盈率
-  pbRatio: 0.85      // 市净率
+  preClose: 0,       // 昨收
+  open: 0,           // 今开
+  high: 0,           // 最高
+  low: 0,            // 最低
+  volume: 0,         // 成交量（手）
+  amount: 0,         // 成交额（元）
+  turnoverRate: 0,   // 换手率
+  amplitude: 0,      // 振幅（%）
+  marketCap: 0,      // 总市值（亿）
+  totalShares: 0,    // 总股本（亿）
+  circulationCap: 0, // 流通值（亿）
+  peRatio: 0,        // 市盈率
+  pbRatio: 0         // 市净率
 })
 
 // 成交明细
@@ -560,8 +560,11 @@ const loadKline = async () => {
         high: item.high,
         low: item.low,
         close: item.close,
-        volume: item.volume
+        volume: item.volume || 0
       }))
+      
+      // 按时间戳排序（确保时间递增）
+      klineData.sort((a, b) => a.timestamp - b.timestamp)
       
       // 应用数据
       chart.applyNewData(klineData)
@@ -578,7 +581,7 @@ const initChart = () => {
       if (chart) {
         dispose(chartRef.value)
       }
-      // 创建新图表，自定义样式
+      // ，自定义样式
       chart = init(chartRef.value, {
         theme: 'dark',
         styles: {
@@ -634,6 +637,11 @@ const initChart = () => {
             tooltip: {
               showRule: 'follow_cross',
               showType: 'standard'
+            },
+            bars: {
+              upColor: '#26A69A',    // 负数volume时显示绿色
+              downColor: '#EF5350',  // 正数volume时显示红色
+              noChangeColor: '#888888'
             }
           },
           xAxis: {
@@ -675,7 +683,7 @@ const initChart = () => {
       // 先在主图（candle_pane）上叠加MA指标
       chart.createIndicator('MA', true, { id: 'candle_pane' })
       
-      // 创建成交量指标（新pane）
+      // 创建成交量指标（使用内置VOL）
       chart.createIndicator('VOL', false, { height: 100 })
       
       // 创建MACD指标（新pane）
@@ -690,11 +698,39 @@ const initChart = () => {
 /**
  * 初始化分时图
  */
-const initMinuteChart = () => {
-  nextTick(() => {
+const initMinuteChart = async () => {
+  nextTick(async () => {
     if (minuteChartRef.value) {
       if (minuteChart) {
         dispose(minuteChartRef.value)
+      }
+      
+      // 获取实时行情数据
+      try {
+        const quoteData = await getRealtimeQuote(currentStock.value.code)
+        if (quoteData) {
+          // 更新当前股票信息
+          currentStock.value.price = quoteData.price
+          currentStock.value.change_pct = quoteData.change_pct
+          currentStock.value.name = quoteData.name || currentStock.value.name
+          
+          // 更新分时数据（兼容蛇形和驼峰命名）
+          const preClose = quoteData.pre_close || quoteData.preClose || (quoteData.price / (1 + quoteData.change_pct / 100))
+          const high = quoteData.high || quoteData.price
+          const low = quoteData.low || quoteData.price
+          
+          minuteData.value.preClose = preClose
+          minuteData.value.open = quoteData.open || quoteData.price
+          minuteData.value.high = high
+          minuteData.value.low = low
+          minuteData.value.volume = quoteData.volume || 0
+          minuteData.value.amount = quoteData.turnover || 0
+          
+          // 计算振幅
+          minuteData.value.amplitude = preClose > 0 ? ((high - low) / preClose * 100) : 0
+        }
+      } catch (e) {
+        console.error('获取实时行情失败', e)
       }
       
       // 判断涨跌
@@ -774,6 +810,11 @@ const initMinuteChart = () => {
             tooltip: {
               showRule: 'follow_cross',
               showType: 'standard'
+            },
+            bars: {
+              upColor: '#26A69A',    // 负数volume时显示绿色
+              downColor: '#EF5350',  // 正数volume时显示红色
+              noChangeColor: '#888888'
             }
           }
         }
@@ -793,8 +834,31 @@ const initMinuteChart = () => {
         points: [{ value: preClose }]
       })
       
-      // 加载分时数据
-      const minuteDataResult = generateMinuteData()
+      // 尝试从后端获取分时数据
+      let minuteDataResult = []
+      try {
+        const intradayResponse = await getIntradayData(currentStock.value.code)
+        if (intradayResponse && intradayResponse.data && intradayResponse.data.length > 0) {
+          // 使用后端返回的真实数据
+          minuteDataResult = intradayResponse.data.map(item => ({
+            timestamp: new Date(item.timestamp).getTime(),
+            open: item.price,
+            high: item.price,
+            low: item.price,
+            close: item.price,
+            volume: item.volume,
+            avg_price: item.avg_price
+          }))
+          // 按时间戳排序（确保时间递增）
+          minuteDataResult.sort((a, b) => a.timestamp - b.timestamp)
+        } else {
+          // 如果没有真实数据，使用模拟数据
+          minuteDataResult = generateMinuteData()
+        }
+      } catch (e) {
+        console.error('获取分时数据失败，使用模拟数据', e)
+        minuteDataResult = generateMinuteData()
+      }
       
       // 计算VWAP均价并添加到数据中
       let totalAmount = 0
@@ -802,18 +866,20 @@ const initMinuteChart = () => {
       const dataWithVWAP = minuteDataResult.map((item) => {
         const close = item.close || 0
         const volume = item.volume || 0
+        
         totalAmount += close * volume
         totalVolume += volume
         const vwap = totalVolume > 0 ? totalAmount / totalVolume : close
+        
         return {
           ...item,
-          vwap: vwap
+          vwap: item.avg_price || vwap
         }
       })
       
       minuteChart.applyNewData(dataWithVWAP)
       
-      // 创建成交量面板
+      // 创建成交量面板（使用内置VOL）
       minuteChart.createIndicator('VOL', false, { height: 80 })
       
       // 在主图上叠加均价线指标（已全局注册）
@@ -948,14 +1014,20 @@ const handlePeriodChange = (val) => {
   }
 }
 
-const selectStock = (stock) => {
+const selectStock = async (stock) => {
   currentStock.value = {
     code: stock.code,
     name: stock.name,
     price: stock.price,
     change_pct: stock.change_pct
   }
-  loadKline()
+  
+  // 根据当前周期加载对应数据
+  if (period.value === 'minute') {
+    await initMinuteChart()
+  } else {
+    await loadKline()
+  }
 }
 
 const savePosition = async () => {

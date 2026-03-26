@@ -41,3 +41,25 @@ export function getRealtimeQuote(code) {
 export function getMarketOverview() {
   return api.get('/stock/market/overview')
 }
+
+/**
+ * 获取分时数据
+ * @param {string} code - 股票代码
+ * @returns {Promise}
+ */
+export function getIntradayData(code) {
+  return api.get(`/stock/intraday/${code}`)
+}
+
+/**
+ * 获取分钟K线数据
+ * @param {string} code - 股票代码
+ * @param {string} period - 周期 1/5/15/30/60分钟
+ * @param {number} count - 数据条数
+ * @returns {Promise}
+ */
+export function getMinuteKlineData(code, period = '5', count = 48) {
+  return api.get(`/stock/minute-kline/${code}`, {
+    params: { period, count }
+  })
+}

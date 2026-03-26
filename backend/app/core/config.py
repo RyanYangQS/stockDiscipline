@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "DEBUG"
     
+    # 数据源配置
+    USE_REAL_DATA: bool = True  # 是否使用真实数据（AKShare）
+    
     # 选股配置
     MAX_STOCK_POOL_SIZE: int = 100
     DEFAULT_STOCK_COUNT: int = 20

@@ -16,7 +16,8 @@ pandas>=2.2
 numpy>=2.0  # 支持Python 3.13
 
 # 股票数据API
-akshare>=1.18  # 使用最新版本
+pytdx>=1.72  # 通达信数据接口
+akshare>=1.18  # 保留作为备用
 
 # 数据验证
 pydantic>=2.6
