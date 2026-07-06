@@ -14,33 +14,53 @@ const props = defineProps({
   }
 });
 
-// Configure marked with highlight.js
+// Configure marked options (highlight option is deprecated in v18)
 marked.setOptions({
-  highlight: function(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value;
-      } catch (err) {
-        // Fall through to auto-detection
-      }
-    }
-    return hljs.highlightAuto(code).value;
-  },
   breaks: true,
   gfm: true
 });
 
-// Custom renderer for links
+// Custom renderer for marked v18 API (receives token objects, not separate params)
 const renderer = new marked.Renderer();
-renderer.link = function(href, title, text) {
-  const titleAttr = title ? ` title="${title}"` : '';
-  return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+
+// Code block renderer - handles syntax highlighting
+renderer.code = function(token) {
+  const code = token.text;
+  const lang = token.lang;
+  let highlighted;
+
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      highlighted = hljs.highlight(code, { language: lang }).value;
+    } catch (err) {
+      highlighted = hljs.highlightAuto(code).value;
+    }
+  } else {
+    highlighted = hljs.highlightAuto(code).value;
+  }
+
+  return `<pre><code class="hljs">${highlighted}</code></pre>`;
 };
 
-// Custom renderer for paragraphs to highlight key sections
-renderer.paragraph = function(text) {
+// Link renderer - receives token object in v18, with XSS protection
+renderer.link = function(token) {
+  const { href, title, text } = token;
+
+  // Security: Only allow http/https URLs to prevent javascript: XSS
+  const safeHref = /^https?:\/\//.test(href) ? href : '#';
+
+  // Escape title attribute to prevent XSS
+  const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
+
+  return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+
+// Paragraph renderer - receives token object in v18
+renderer.paragraph = function(token) {
+  const paragraphText = token.text;
+
   // Highlight key sections: 盈亏、建议、风险
-  const highlightedText = text
+  const highlightedText = paragraphText
     .replace(/盈亏/g, '<span class="highlight-pnl">$&</span>')
     .replace(/建议/g, '<span class="highlight-advice">$&</span>')
     .replace(/风险/g, '<span class="highlight-risk">$&</span>');
@@ -54,7 +74,7 @@ const renderedContent = computed(() => {
   }
 
   try {
-    // Use custom renderer
+    // Use custom renderer with marked v18 API
     marked.use({ renderer });
     return marked(props.content);
   } catch (err) {
