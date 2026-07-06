@@ -302,9 +302,27 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def run(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
+    import socket
+
     init_db()
     seed_if_empty()
     rebuild_advice()
-    server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Stock Discipline running at http://{host}:{port}")
-    server.serve_forever()
+
+    # Try default port, then find available port if blocked
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        try:
+            server = ThreadingHTTPServer((host, port), Handler)
+            print(f"Stock Discipline running at http://{host}:{port}")
+            server.serve_forever()
+            return
+        except OSError as e:
+            if e.errno == 48:  # Address already in use
+                if attempt == 0:
+                    print(f"Port {port} is in use, trying other ports...")
+                port += 1
+            else:
+                raise
+
+    print(f"Could not find available port after {max_attempts} attempts")
+    raise OSError(f"No available ports in range {DEFAULT_PORT}-{DEFAULT_PORT + max_attempts}")
