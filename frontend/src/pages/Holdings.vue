@@ -80,7 +80,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 /* Scrollable container for sticky header */
 .table-wrap {
   max-height: 400px;
-  overflow-y: auto;
+  overflow: auto;
   border-radius: 8px;
 }
 
@@ -153,7 +153,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 
 /* Symmetrical cards - same height grid */
 .grid {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
   align-items: stretch;
 }
 
