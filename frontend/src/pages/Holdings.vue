@@ -5,14 +5,14 @@
     </template>
     <div class="table-wrap">
       <table class="holdings-table">
-        <thead><tr><th>标的</th><th>持仓</th><th>成本</th><th>现价</th><th class="col-pnl">盈亏</th><th>分类</th><th>情景</th><th>减仓触发</th><th>止损触发</th><th>加仓参考</th><th class="col-action">操作建议</th></tr></thead>
+        <thead><tr><th>标的</th><th>持仓</th><th>成本</th><th>现价</th><th class="col-pnl">盈亏</th><th>分类</th><th class="col-risk">情景</th><th>减仓触发</th><th>止损触发</th><th>加仓参考</th><th class="col-action">操作建议</th></tr></thead>
         <tbody>
           <tr v-for="row in advice" :key="row.name">
             <td><strong>{{ row.name }}</strong></td><td>{{ row.quantity }}股</td><td>{{ money(row.cost_price) }}元</td><td>{{ money(row.current_price) }}元</td>
             <td class="col-pnl" :class="pnlClass(row.pnl_ratio)">{{ row.pnl_ratio_text || pct(row.pnl_ratio) }}</td>
-            <td>{{ row.category }}</td><td><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
+            <td>{{ row.category }}</td><td class="col-risk"><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
             <td>{{ row.trim_trigger }}</td><td>{{ row.stop_trigger }}</td><td>{{ row.add_reference }}</td>
-            <td class="col-action">{{ row.action_advice }}<br><span class="text-muted">{{ row.reason }}</span></td>
+            <td class="col-action"><span class="action-text">{{ row.action_advice }}</span><br><span class="text-muted">{{ row.reason }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -77,6 +77,13 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 </script>
 
 <style scoped>
+/* Scrollable container for sticky header */
+.table-wrap {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
 /* Responsive table with auto-fit columns */
 .holdings-table {
   width: 100%;
@@ -116,10 +123,32 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   color: var(--danger);
 }
 
-/* Highlight 操作建议 column - wider for content */
+/* Highlight 风险等级 column */
+.col-risk {
+  font-weight: 600;
+}
+
+.holdings-table thead th.col-risk {
+  background: linear-gradient(to right, var(--table-header), rgba(180, 35, 24, 0.1));
+}
+
+/* Highlight 操作建议 column - visual emphasis */
 .col-action {
   min-width: 180px;
   white-space: normal;
+  background: rgba(23, 107, 135, 0.05);
+  border-left: 2px solid var(--primary);
+  padding-left: 12px;
+}
+
+.holdings-table thead th.col-action {
+  background: linear-gradient(to right, var(--table-header), rgba(23, 107, 135, 0.15));
+  font-weight: 700;
+}
+
+.action-text {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* Symmetrical cards - same height grid */
