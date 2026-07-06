@@ -34,7 +34,7 @@ from app.repository import (  # noqa: E402
     seed_if_empty,
     update_position,
 )
-from app.server import ApiError, Handler, build_advice_csv, json_bytes  # noqa: E402
+from app.server import ApiError, Handler, build_advice_csv, build_realtime_kline_payload, json_bytes  # noqa: E402
 
 
 class TempDatabaseMixin:
@@ -237,6 +237,42 @@ class RepositoryTests(TempDatabaseMixin, unittest.TestCase):
         self.assertEqual(saved["close_price"], 10.8)
         self.assertEqual(len(list_kline(name="测试股票")), 1)
 
+    def test_realtime_kline_falls_back_to_local_cache_when_source_empty(self):
+        seed_if_empty()
+        payload = build_realtime_kline_payload(
+            name="中天科技",
+            days=5,
+            fetcher=lambda symbol, name, days: [],
+        )
+        self.assertEqual(payload["source"], "local_cache")
+        self.assertEqual(payload["symbol"], "sh.600522")
+        self.assertEqual(len(payload["bars"]), 5)
+
+    def test_realtime_kline_saves_remote_bars(self):
+        payload = build_realtime_kline_payload(
+            name="中天科技",
+            symbol="sh.600522",
+            days=1,
+            fetcher=lambda symbol, name, days: [
+                {
+                    "symbol": symbol,
+                    "name": name,
+                    "trade_date": "2026-07-06",
+                    "open_price": 50,
+                    "high_price": 52,
+                    "low_price": 49,
+                    "close_price": 51,
+                    "volume": 1000000,
+                    "amount": 51000000,
+                    "turnover_rate": 2.5,
+                }
+            ],
+        )
+        self.assertEqual(payload["source"], "baostock")
+        self.assertEqual(payload["saved"], 1)
+        bars = list_kline(name="中天科技", symbol="sh.600522", limit=5)
+        self.assertEqual(bars[-1]["close_price"], 51)
+
     def test_daily_analysis_falls_back_when_deepseek_key_missing(self):
         seed_if_empty()
         rebuild_advice()
@@ -279,6 +315,8 @@ class ExportAndSurfaceTests(TempDatabaseMixin, unittest.TestCase):
         root_files = {path.name for path in (ROOT / "frontend").iterdir() if path.is_file()}
         app = (ROOT / "frontend" / "src" / "App.vue").read_text(encoding="utf-8")
         kline = (ROOT / "frontend" / "src" / "components" / "KlineChart.vue").read_text(encoding="utf-8")
+        kline_page = (ROOT / "frontend" / "src" / "pages" / "KlineVolume.vue").read_text(encoding="utf-8")
+        server = (ROOT / "backend" / "app" / "server.py").read_text(encoding="utf-8")
         holdings = (ROOT / "frontend" / "src" / "pages" / "Holdings.vue").read_text(encoding="utf-8")
         news = (ROOT / "frontend" / "src" / "pages" / "NewsCenter.vue").read_text(encoding="utf-8")
         analysis = (ROOT / "frontend" / "src" / "pages" / "AiAnalysis.vue").read_text(encoding="utf-8")
@@ -297,6 +335,19 @@ class ExportAndSurfaceTests(TempDatabaseMixin, unittest.TestCase):
         self.assertIn("K线量能", app)
         self.assertIn("klinecharts", kline)
         self.assertIn("applyNewData", kline)
+        self.assertIn('props.mode === "daily" ? [5, 10, 20, 30, 60] : [5, 10, 20]', kline)
+        self.assertIn("mousemove", kline)
+        self.assertIn("rawVolume / 100", kline)
+        self.assertIn("trade-tooltip", kline)
+        self.assertIn("LineType.Solid", kline)
+        self.assertIn("setMaxOffsetRightDistance(0)", kline)
+        self.assertIn("OnVisibleRangeChange", kline)
+        self.assertIn("requestMoreHistory", kline)
+        self.assertIn("分时K线", kline_page)
+        self.assertIn("/api/kline/intraday", kline_page)
+        self.assertIn("dailyDays.value + 180", kline_page)
+        self.assertIn("setInterval", kline_page)
+        self.assertIn("/api/kline/intraday", server)
         self.assertIn("/api/advice/rebuild", holdings)
         self.assertIn("/api/news", news)
         self.assertIn("/api/analysis/daily", analysis)

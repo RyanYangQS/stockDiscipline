@@ -14,6 +14,16 @@ const props = defineProps({
   }
 });
 
+// Escape HTML to prevent XSS
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Configure marked options (highlight option is deprecated in v18)
 marked.setOptions({
   breaks: true,
@@ -50,9 +60,10 @@ renderer.link = function(token) {
   const safeHref = /^https?:\/\//.test(href) ? href : '#';
 
   // Escape title attribute to prevent XSS
-  const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
 
-  return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+  // Escape link text to prevent XSS
+  return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`;
 };
 
 // Paragraph renderer - receives token object in v18
@@ -68,18 +79,19 @@ renderer.paragraph = function(token) {
   return `<p>${highlightedText}</p>`;
 };
 
+// Register renderer once at module load, not in computed
+marked.use({ renderer });
+
 const renderedContent = computed(() => {
   if (!props.content) {
     return '';
   }
 
   try {
-    // Use custom renderer with marked v18 API
-    marked.use({ renderer });
     return marked(props.content);
   } catch (err) {
     console.error('Markdown rendering error:', err);
-    return `<p>${props.content}</p>`;
+    return `<p>${escapeHtml(props.content)}</p>`;
   }
 });
 </script>

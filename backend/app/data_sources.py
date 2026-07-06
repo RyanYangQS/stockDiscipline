@@ -6,13 +6,25 @@ import os
 from datetime import date, timedelta
 from typing import Any
 
+import requests
+
 # Disable proxy for requests
 os.environ.pop('HTTP_PROXY', None)
 os.environ.pop('HTTPS_PROXY', None)
 os.environ.pop('http_proxy', None)
 os.environ.pop('https_proxy', None)
+os.environ.pop('ALL_PROXY', None)
+os.environ.pop('all_proxy', None)
 
 logger = logging.getLogger(__name__)
+
+COMMON_STOCK_CODES = {
+    "中天科技": "sh.600522",
+    "顺络电子": "sz.002138",
+    "立昂微": "sh.605358",
+    "万润科技": "sz.002654",
+    "掌阅科技": "sh.603533",
+}
 
 
 def _get_baostock():
@@ -143,8 +155,161 @@ def fetch_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
     return None
 
 
+def fetch_intraday_kline(symbol: str, name: str = "", period: int = 5, limit: int = 240) -> list[dict[str, Any]]:
+    """Fetch minute-level K-line data from Eastmoney."""
+    if not symbol:
+        symbol = _search_stock_code(name)
+    secid = _eastmoney_secid(symbol)
+    if not secid:
+        return []
+
+    klt = int(period or 5)
+    if klt not in {1, 5, 15, 30, 60}:
+        klt = 5
+    safe_limit = max(30, min(int(limit or 240), 1200))
+
+    params = {
+        "secid": secid,
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+        "klt": str(klt),
+        "fqt": "1",
+        "beg": "0",
+        "end": "20500101",
+        "lmt": str(safe_limit),
+    }
+    try:
+        session = requests.Session()
+        session.trust_env = False
+        response = session.get("https://push2his.eastmoney.com/api/qt/stock/kline/get", params=params, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+        data = payload.get("data") or {}
+        rows = data.get("klines") or []
+        stock_name = name or data.get("name") or ""
+        bars = []
+        for row in rows:
+            parts = row.split(",")
+            if len(parts) < 11:
+                continue
+            volume_hands = float(parts[5] or 0)
+            bars.append({
+                "symbol": symbol,
+                "name": stock_name,
+                "trade_date": parts[0],
+                "open_price": float(parts[1] or 0),
+                "close_price": float(parts[2] or 0),
+                "high_price": float(parts[3] or 0),
+                "low_price": float(parts[4] or 0),
+                # Keep backend volume unit consistent with daily bars: shares.
+                "volume": volume_hands * 100,
+                "amount": float(parts[6] or 0),
+                "amplitude": float(parts[7] or 0),
+                "change_pct": float(parts[8] or 0),
+                "change_value": float(parts[9] or 0),
+                "turnover_rate": float(parts[10] or 0),
+                "period": klt,
+            })
+        if bars:
+            return bars
+    except Exception as e:
+        logger.error(f"Eastmoney fetch_intraday_kline error: {e}")
+
+    return _fetch_tencent_intraday_kline(symbol, name, klt, safe_limit)
+
+
+def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: int) -> list[dict[str, Any]]:
+    code = _market_code(symbol)
+    if not code:
+        return []
+    try:
+        response = requests.get(
+            "https://web.ifzq.gtimg.cn/appstock/app/minute/query",
+            params={"code": code},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        stock_data = ((payload.get("data") or {}).get(code) or {}).get("data") or {}
+        trade_day = stock_data.get("date") or date.today().strftime("%Y%m%d")
+        rows = stock_data.get("data") or []
+        minute_rows = []
+        previous_volume = 0.0
+        previous_amount = 0.0
+        for row in rows:
+            parts = row.split()
+            if len(parts) < 4:
+                continue
+            minute = parts[0]
+            price = float(parts[1] or 0)
+            cumulative_volume = float(parts[2] or 0)
+            cumulative_amount = float(parts[3] or 0)
+            minute_rows.append({
+                "time": f"{minute[:2]}:{minute[2:]}",
+                "price": price,
+                "volume_hands": max(0.0, cumulative_volume - previous_volume),
+                "amount": max(0.0, cumulative_amount - previous_amount),
+            })
+            previous_volume = cumulative_volume
+            previous_amount = cumulative_amount
+
+        grouped = []
+        for index in range(0, len(minute_rows), period):
+            chunk = minute_rows[index:index + period]
+            if not chunk:
+                continue
+            prices = [item["price"] for item in chunk]
+            volume_hands = sum(item["volume_hands"] for item in chunk)
+            amount = sum(item["amount"] for item in chunk)
+            grouped.append({
+                "symbol": symbol,
+                "name": name,
+                "trade_date": f"{trade_day[:4]}-{trade_day[4:6]}-{trade_day[6:]} {chunk[-1]['time']}",
+                "open_price": prices[0],
+                "close_price": prices[-1],
+                "high_price": max(prices),
+                "low_price": min(prices),
+                "volume": volume_hands * 100,
+                "amount": amount,
+                "turnover_rate": 0,
+                "period": period,
+            })
+        return grouped[-limit:]
+    except Exception as e:
+        logger.error(f"Tencent fetch_intraday_kline error: {e}")
+        return []
+
+
+def _eastmoney_secid(symbol: str) -> str:
+    code = (symbol or "").strip().lower()
+    if not code:
+        return ""
+    if code.startswith("sh."):
+        return f"1.{code.split('.', 1)[1]}"
+    if code.startswith("sz."):
+        return f"0.{code.split('.', 1)[1]}"
+    if code.startswith("6"):
+        return f"1.{code}"
+    return f"0.{code}"
+
+
+def _market_code(symbol: str) -> str:
+    code = (symbol or "").strip().lower()
+    if not code:
+        return ""
+    if code.startswith("sh.") or code.startswith("sz."):
+        return code.replace(".", "")
+    if code.startswith("6"):
+        return f"sh{code}"
+    return f"sz{code}"
+
+
 def _search_stock_code(name: str) -> str:
     """Search stock code by name using baostock."""
+    if name in COMMON_STOCK_CODES:
+        return COMMON_STOCK_CODES[name]
+
     bs = _login_bs()
     if not bs or not name:
         return ""
