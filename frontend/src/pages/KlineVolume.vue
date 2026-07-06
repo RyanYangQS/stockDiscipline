@@ -1,46 +1,44 @@
 <template>
-  <section class="panel">
-    <div class="panel-head">
-      <div>
-        <h2>专业 K线量能图</h2>
-        <p class="muted">使用 KLineCharts 展示蜡烛图与成交量指标</p>
-      </div>
-      <div class="row-actions">
-        <select v-model="selectedName" @change="loadKline"><option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}</option></select>
-        <button class="btn" @click="loadKline">刷新K线</button>
-      </div>
-    </div>
+  <Card title="专业 K线量能图" icon="kline" tone="primary">
+    <template #subtitle>使用 KLineCharts 展示蜡烛图与成交量指标</template>
+    <template #actions>
+      <select v-model="selectedName" @change="loadKline"><option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}</option></select>
+      <button class="btn" @click="loadKline">刷新K线</button>
+    </template>
     <KlineChart :bars="bars" />
-  </section>
-  <section class="grid">
-    <form class="panel" @submit.prevent="saveVolume">
-      <h2>录入量能快照</h2>
-      <div class="form-grid">
-        <label>标的<input v-model="volumeForm.name" /></label><label>交易日<input v-model="volumeForm.trade_date" type="date" /></label>
-        <label>量能状态<select v-model="volumeForm.volume_state"><option>温和放量</option><option>异常放量</option><option>放量滞涨</option><option>缩量抗跌</option><option>缩量阴跌</option><option>天量换手</option></select></label>
-        <label>量比<input v-model.number="volumeForm.volume_ratio" type="number" step="0.01" /></label>
-        <label>换手率<input v-model.number="volumeForm.turnover_rate" type="number" step="0.01" /></label>
-        <label>买入评分<input v-model.number="volumeForm.buy_watch_score" type="number" min="0" max="100" /></label>
-        <label>卖出风险<input v-model.number="volumeForm.sell_risk_score" type="number" min="0" max="100" /></label>
-        <label>建仓评分<input v-model.number="volumeForm.accumulation_score" type="number" min="0" max="100" /></label>
-      </div>
-      <button class="btn primary" type="submit">保存量能</button>
-    </form>
-    <form class="panel" @submit.prevent="saveBar">
-      <h2>录入日K</h2>
-      <div class="form-grid">
-        <label>标的<input v-model="barForm.name" /></label><label>日期<input v-model="barForm.trade_date" type="date" /></label>
-        <label>开盘<input v-model.number="barForm.open_price" type="number" step="0.01" /></label><label>最高<input v-model.number="barForm.high_price" type="number" step="0.01" /></label>
-        <label>最低<input v-model.number="barForm.low_price" type="number" step="0.01" /></label><label>收盘<input v-model.number="barForm.close_price" type="number" step="0.01" /></label>
-        <label>成交量<input v-model.number="barForm.volume" type="number" /></label><label>成交额<input v-model.number="barForm.amount" type="number" /></label>
-      </div>
-      <button class="btn primary" type="submit">保存日K</button>
-    </form>
-  </section>
+  </Card>
+  <div class="grid">
+    <Card title="录入量能快照" icon="chart" tone="primary">
+      <form @submit.prevent="saveVolume">
+        <div class="form-grid">
+          <label>标的<input v-model="volumeForm.name" /></label><label>交易日<input v-model="volumeForm.trade_date" type="date" /></label>
+          <label>量能状态<select v-model="volumeForm.volume_state"><option>温和放量</option><option>异常放量</option><option>放量滞涨</option><option>缩量抗跌</option><option>缩量阴跌</option><option>天量换手</option></select></label>
+          <label>量比<input v-model.number="volumeForm.volume_ratio" type="number" step="0.01" /></label>
+          <label>换手率<input v-model.number="volumeForm.turnover_rate" type="number" step="0.01" /></label>
+          <label>买入评分<input v-model.number="volumeForm.buy_watch_score" type="number" min="0" max="100" /></label>
+          <label>卖出风险<input v-model.number="volumeForm.sell_risk_score" type="number" min="0" max="100" /></label>
+          <label>建仓评分<input v-model.number="volumeForm.accumulation_score" type="number" min="0" max="100" /></label>
+        </div>
+        <button class="btn primary" type="submit">保存量能</button>
+      </form>
+    </Card>
+    <Card title="录入日K" icon="kline" tone="default">
+      <form @submit.prevent="saveBar">
+        <div class="form-grid">
+          <label>标的<input v-model="barForm.name" /></label><label>日期<input v-model="barForm.trade_date" type="date" /></label>
+          <label>开盘<input v-model.number="barForm.open_price" type="number" step="0.01" /></label><label>最高<input v-model.number="barForm.high_price" type="number" step="0.01" /></label>
+          <label>最低<input v-model.number="barForm.low_price" type="number" step="0.01" /></label><label>收盘<input v-model.number="barForm.close_price" type="number" step="0.01" /></label>
+          <label>成交量<input v-model.number="barForm.volume" type="number" /></label><label>成交额<input v-model.number="barForm.amount" type="number" /></label>
+        </div>
+        <button class="btn primary" type="submit">保存日K</button>
+      </form>
+    </Card>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
 import { apiGet, apiPost } from "../services/api";
 import { today } from "../services/format";
