@@ -4,13 +4,15 @@
       <button class="btn primary" @click="rebuild">重新生成建议</button>
     </template>
     <div class="table-wrap">
-      <table>
-        <thead><tr><th>标的</th><th>持仓</th><th>成本</th><th>现价</th><th>盈亏</th><th>分类</th><th>情景</th><th>减仓触发</th><th>止损触发</th><th>加仓参考</th><th>操作建议</th></tr></thead>
+      <table class="holdings-table">
+        <thead><tr><th>标的</th><th>持仓</th><th>成本</th><th>现价</th><th class="col-pnl">盈亏</th><th>分类</th><th>情景</th><th>减仓触发</th><th>止损触发</th><th>加仓参考</th><th class="col-action">操作建议</th></tr></thead>
         <tbody>
           <tr v-for="row in advice" :key="row.name">
             <td><strong>{{ row.name }}</strong></td><td>{{ row.quantity }}股</td><td>{{ money(row.cost_price) }}元</td><td>{{ money(row.current_price) }}元</td>
-            <td>{{ row.pnl_ratio_text || pct(row.pnl_ratio) }}</td><td>{{ row.category }}</td><td><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
-            <td>{{ row.trim_trigger }}</td><td>{{ row.stop_trigger }}</td><td>{{ row.add_reference }}</td><td>{{ row.action_advice }}<br><span class="text-muted">{{ row.reason }}</span></td>
+            <td class="col-pnl" :class="pnlClass(row.pnl_ratio)">{{ row.pnl_ratio_text || pct(row.pnl_ratio) }}</td>
+            <td>{{ row.category }}</td><td><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
+            <td>{{ row.trim_trigger }}</td><td>{{ row.stop_trigger }}</td><td>{{ row.add_reference }}</td>
+            <td class="col-action">{{ row.action_advice }}<br><span class="text-muted">{{ row.reason }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -51,6 +53,12 @@ import Card from "../components/Card.vue";
 import { apiDelete, apiGet, apiPost, apiPut } from "../services/api";
 import { money, pct, riskClass } from "../services/format";
 
+function pnlClass(ratio) {
+  if (ratio > 0) return 'pnl-positive';
+  if (ratio < 0) return 'pnl-negative';
+  return '';
+}
+
 const emit = defineEmits(["toast"]);
 const advice = ref([]);
 const positions = ref([]);
@@ -67,3 +75,67 @@ async function remove(p) { await apiDelete(`/api/positions/${p.id}`); await rebu
 
 onMounted(() => load().catch((err) => emit("toast", err.message)));
 </script>
+
+<style scoped>
+/* Responsive table with auto-fit columns */
+.holdings-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.holdings-table th,
+.holdings-table td {
+  min-width: 60px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+/* Sticky header for long tables */
+.holdings-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.holdings-table thead th {
+  background: var(--table-header);
+  border-bottom: 2px solid var(--line);
+}
+
+/* Highlight 盈亏 column - red/green */
+.col-pnl {
+  font-weight: 600;
+}
+
+.pnl-positive {
+  color: var(--ok);
+}
+
+.pnl-negative {
+  color: var(--danger);
+}
+
+/* Highlight 操作建议 column - wider for content */
+.col-action {
+  min-width: 180px;
+  white-space: normal;
+}
+
+/* Symmetrical cards - same height grid */
+.grid {
+  grid-template-columns: repeat(2, 1fr);
+  align-items: stretch;
+}
+
+.grid > .card {
+  height: 100%;
+}
+
+/* Aligned forms */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+</style>
