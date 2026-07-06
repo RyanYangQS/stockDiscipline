@@ -2,8 +2,12 @@
   <Card title="专业 K线量能图" icon="kline" tone="primary">
     <template #subtitle>使用 KLineCharts 展示蜡烛图与成交量指标</template>
     <template #actions>
-      <select v-model="selectedName" @change="onStockChange"><option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}</option></select>
-      <button class="btn" :disabled="loading" @click="fetchRealtime">{{ loading ? "获取中..." : "自动获取K线" }}</button>
+      <select v-model="selectedName" @change="onStockChange"><option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}{{ p.symbol ? ` (${p.symbol})` : "" }}</option></select>
+      <div class="mode-tabs">
+        <button class="tab-btn" :class="{ active: chartMode === 'daily' }" @click="switchMode('daily')">日K</button>
+        <button class="tab-btn" :class="{ active: chartMode === 'minute' }" @click="switchMode('minute')">分时K线</button>
+      </div>
+      <button class="btn" :disabled="loading" @click="refreshChart">{{ loading ? "获取中..." : "刷新K线" }}</button>
       <button class="btn primary" :disabled="aiLoading" @click="runAIAnalysis">{{ aiLoading ? "分析中..." : "AI量能分析" }}</button>
     </template>
     <div v-if="dataStatus" class="data-status">
@@ -11,8 +15,12 @@
         {{ dataStatus.available ? (dataStatus.message || '数据源已连接') : `数据源未连接: ${dataStatus.error}` }}
       </span>
     </div>
-    <KlineChart :bars="bars" />
-    <p v-if="!bars.length" class="text-muted">暂无K线数据，请点击"自动获取K线"</p>
+    <div class="chart-meta">
+      <span>{{ chartMode === "daily" ? `已加载 ${bars.length} 根日K，右侧锁定最后交易日` : `已加载 ${bars.length} 根${minutePeriod}分钟K，自动刷新中` }}</span>
+      <span v-if="loadingMore">正在加载更多历史K线...</span>
+    </div>
+    <KlineChart :bars="bars" :mode="chartMode" @request-more-history="loadMoreHistory" />
+    <p v-if="!bars.length" class="text-muted">暂无K线数据，请点击"刷新K线"</p>
   </Card>
   <Card v-if="aiReport" title="AI量能分析报告" icon="ai" tone="primary">
     <MarkdownRender :content="aiReport" />
@@ -47,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
@@ -60,8 +68,22 @@ const bars = ref([]);
 const quote = ref(null);
 const dataStatus = ref(null);
 const loading = ref(false);
+const loadingMore = ref(false);
 const aiLoading = ref(false);
 const aiReport = ref("");
+const chartMode = ref("daily");
+const dailyDays = ref(260);
+const minutePeriod = ref(5);
+let minuteTimer = null;
+const selectedPosition = computed(() => positions.value.find((item) => item.name === selectedName.value) || null);
+
+function stockQuery(extra = {}) {
+  const query = new URLSearchParams();
+  if (selectedName.value) query.set("name", selectedName.value);
+  if (selectedPosition.value?.symbol) query.set("symbol", selectedPosition.value.symbol);
+  Object.entries(extra).forEach(([key, value]) => query.set(key, String(value)));
+  return query.toString();
+}
 
 function formatVolume(vol) {
   if (vol >= 1e8) return `${(vol / 1e8).toFixed(2)}亿`;
@@ -90,26 +112,46 @@ async function checkDataStatus() {
 
 async function loadKline() {
   if (!selectedName.value) return;
-  bars.value = await apiGet(`/api/kline?name=${encodeURIComponent(selectedName.value)}&limit=160`);
+  await fetchDailyKline(false);
 }
 
 async function onStockChange() {
   bars.value = [];
   quote.value = null;
   aiReport.value = "";
-  await loadKline();
+  dailyDays.value = 260;
+  await refreshChart();
 }
 
-async function fetchRealtime() {
+async function fetchDailyKline(appendHistory = false) {
+  if (!selectedName.value) return;
+  if (!appendHistory) loading.value = true;
+  try {
+    const result = await apiGet(`/api/kline/realtime?${stockQuery({ days: dailyDays.value })}`);
+    if (result.bars && result.bars.length) {
+      bars.value = result.bars;
+      const sourceText = result.source === "baostock" ? "实时源" : "本地缓存";
+      emit("toast", `${sourceText}加载 ${result.bars.length} 条K线数据`);
+    } else {
+      emit("toast", result.message || "未获取到K线数据，请检查股票代码或Baostock连接");
+    }
+  } catch (err) {
+    emit("toast", err.message);
+  } finally {
+    if (!appendHistory) loading.value = false;
+  }
+}
+
+async function fetchMinuteKline() {
   if (!selectedName.value) return;
   loading.value = true;
   try {
-    const result = await apiGet(`/api/kline/realtime?name=${encodeURIComponent(selectedName.value)}&days=60`);
+    const result = await apiGet(`/api/kline/intraday?${stockQuery({ period: minutePeriod.value, limit: 240 })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
-      emit("toast", `获取 ${result.bars.length} 条K线数据`);
+      emit("toast", `分时K线刷新 ${result.bars.length} 根`);
     } else {
-      emit("toast", "未获取到K线数据，请检查股票名称或安装AKShare");
+      emit("toast", result.message || "未获取到分时K线数据");
     }
   } catch (err) {
     emit("toast", err.message);
@@ -118,10 +160,60 @@ async function fetchRealtime() {
   }
 }
 
+async function refreshChart() {
+  if (chartMode.value === "daily") {
+    stopMinuteTimer();
+    await fetchDailyKline(false);
+    return;
+  }
+  await fetchMinuteKline();
+  startMinuteTimer();
+}
+
+async function switchMode(mode) {
+  if (chartMode.value === mode) return;
+  chartMode.value = mode;
+  bars.value = [];
+  if (mode === "minute") {
+    await fetchMinuteKline();
+    startMinuteTimer();
+  } else {
+    stopMinuteTimer();
+    await fetchDailyKline(false);
+  }
+}
+
+async function loadMoreHistory() {
+  if (chartMode.value !== "daily" || loadingMore.value || loading.value) return;
+  loadingMore.value = true;
+  dailyDays.value = Math.min(dailyDays.value + 180, 1000);
+  try {
+    await fetchDailyKline(true);
+  } finally {
+    loadingMore.value = false;
+  }
+}
+
+function startMinuteTimer() {
+  stopMinuteTimer();
+  minuteTimer = setInterval(() => {
+    if (chartMode.value === "minute" && selectedName.value) {
+      fetchMinuteKline();
+    }
+  }, 30000);
+}
+
+function stopMinuteTimer() {
+  if (minuteTimer) {
+    clearInterval(minuteTimer);
+    minuteTimer = null;
+  }
+}
+
 async function refreshQuote() {
   if (!selectedName.value) return;
   try {
-    quote.value = await apiGet(`/api/quote/?name=${encodeURIComponent(selectedName.value)}`);
+    quote.value = await apiGet(`/api/quote?${stockQuery()}`);
   } catch (err) {
     emit("toast", err.message);
   }
@@ -132,17 +224,20 @@ async function runAIAnalysis() {
     emit("toast", "请先获取K线数据");
     return;
   }
+  if (bars.value.length < 5) {
+    emit("toast", "K线数据不足，需要至少5根");
+    return;
+  }
   aiLoading.value = true;
   try {
     const context = {
       stock: selectedName.value,
-      bars: bars.value.slice(-30),
+      bars: bars.value,
       quote: quote.value,
     };
-    await apiPost("/api/analysis/daily", { extra_note: `请分析 ${selectedName.value} 的量能特征和K线结构` });
-    const reports = await apiGet("/api/analysis/reports");
-    aiReport.value = reports[0]?.content || "";
-    emit("toast", "AI分析已生成");
+    const result = await apiPost("/api/analysis/volume", context);
+    aiReport.value = result.content || "";
+    emit("toast", `AI量能分析完成 (${result.provider})`);
   } catch (err) {
     emit("toast", err.message);
   } finally {
@@ -158,6 +253,8 @@ onMounted(async () => {
     emit("toast", err.message);
   }
 });
+
+onBeforeUnmount(stopMinuteTimer);
 </script>
 
 <style scoped>
@@ -174,6 +271,43 @@ onMounted(async () => {
 
 .status-error {
   color: var(--danger);
+}
+
+.mode-tabs {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.tab-btn {
+  min-height: 38px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  padding: 0 14px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tab-btn:last-child {
+  border-right: 0;
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+.chart-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .quote-info {

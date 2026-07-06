@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import mimetypes
 from datetime import date
 from pathlib import Path
@@ -14,8 +15,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DIR, FRONTEND_DIST_DIR
-from .data_sources import check_akshare_available, fetch_kline, fetch_realtime_quote
-from .db import init_db
+from .data_sources import check_akshare_available, fetch_intraday_kline, fetch_kline, fetch_realtime_quote
+from .db import connect, init_db, utc_now
+from .deepseek import call_deepseek, call_deepseek_for_volume
+from .technical_analysis import analyze_volume_signals, calculate_volume_metrics
 from .repository import (
     create_daily_analysis,
     create_kline,
@@ -45,6 +48,165 @@ from .repository import (
     update_position,
 )
 from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_cls_news, scrape_sina_finance
+
+
+class ApiError(Exception):
+    """Compatibility error used by legacy surface tests."""
+
+
+class Handler:
+    """Small compatibility shim for legacy path parsing tests."""
+
+    def _path_id(self, path: str, prefix: str) -> int:
+        value = path.removeprefix(prefix).strip("/")
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ApiError(f"invalid id: {value}") from exc
+
+
+def json_bytes(payload: Any) -> bytes:
+    return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def build_advice_csv(rows: list[dict[str, Any]]) -> bytes:
+    output = io.StringIO()
+    headers = [
+        "标的",
+        "持仓数量",
+        "成本价",
+        "当前参考价",
+        "浮亏/浮盈比例",
+        "标的分类",
+        "减仓触发价（分批执行）",
+        "止损触发价（跌破刚性执行）",
+        "加仓参考价（仅企稳后）",
+        "操作建议",
+        "情景判断",
+        "纪律通过",
+    ]
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow(
+            [
+                row["name"],
+                f"{row['quantity']}股",
+                f"{float(row['cost_price']):.2f}元",
+                f"{float(row['current_price']):.2f}元",
+                row.get("pnl_ratio_text") or f"{float(row['pnl_ratio']) * 100:+.1f}%",
+                row["category"],
+                row["trim_trigger"],
+                row["stop_trigger"],
+                row["add_reference"],
+                row["action_advice"],
+                row["scenario"],
+                "是" if int(row["discipline_passed"]) else "否",
+            ]
+        )
+    return output.getvalue().encode("utf-8-sig")
+
+
+def _resolve_stock_identity(name: str = "", symbol: str = "") -> tuple[str, str]:
+    resolved_name = (name or "").strip()
+    resolved_symbol = (symbol or "").strip()
+    for position in list_positions():
+        if resolved_name and position.get("name") == resolved_name:
+            return resolved_name, resolved_symbol or position.get("symbol", "")
+        if resolved_symbol and position.get("symbol") == resolved_symbol:
+            return resolved_name or position.get("name", ""), resolved_symbol
+    return resolved_name, resolved_symbol
+
+
+def _save_kline_bars(bars: list[dict[str, Any]], name: str, symbol: str) -> int:
+    saved = 0
+    for bar in bars:
+        payload = {
+            **bar,
+            "name": bar.get("name") or name,
+            "symbol": bar.get("symbol") or symbol,
+        }
+        try:
+            create_kline(payload)
+            saved += 1
+        except Exception:
+            pass
+    return saved
+
+
+def build_realtime_kline_payload(
+    name: str = "",
+    symbol: str = "",
+    days: int = 60,
+    fetcher=fetch_kline,
+) -> dict[str, Any]:
+    safe_days = max(1, min(int(days or 60), 1000))
+    resolved_name, resolved_symbol = _resolve_stock_identity(name, symbol)
+    bars = fetcher(resolved_symbol, resolved_name, safe_days)
+    if bars:
+        saved = _save_kline_bars(bars, resolved_name, resolved_symbol)
+        return {
+            "bars": bars,
+            "source": "baostock",
+            "name": resolved_name,
+            "symbol": resolved_symbol,
+            "saved": saved,
+        }
+
+    cached = list_kline(name=resolved_name or name, symbol=resolved_symbol or symbol, limit=safe_days)
+    return {
+        "bars": cached,
+        "source": "local_cache" if cached else "empty",
+        "name": resolved_name,
+        "symbol": resolved_symbol,
+        "message": "Baostock未返回数据，已回退本地缓存" if cached else "Baostock未返回数据，且本地缓存为空",
+    }
+
+
+def build_intraday_kline_payload(name: str = "", symbol: str = "", period: int = 5, limit: int = 240) -> dict[str, Any]:
+    safe_limit = max(30, min(int(limit or 240), 1200))
+    safe_period = int(period or 5)
+    resolved_name, resolved_symbol = _resolve_stock_identity(name, symbol)
+    bars = fetch_intraday_kline(resolved_symbol, resolved_name, safe_period, safe_limit)
+    return {
+        "bars": bars,
+        "source": "eastmoney" if bars else "empty",
+        "name": resolved_name,
+        "symbol": resolved_symbol,
+        "period": safe_period,
+        "limit": safe_limit,
+        "message": "" if bars else "东方财富分钟K未返回数据",
+    }
+
+
+def build_quote_payload(name: str = "", symbol: str = "") -> dict[str, Any]:
+    resolved_name, resolved_symbol = _resolve_stock_identity(name, symbol)
+    quote = fetch_realtime_quote(resolved_symbol or "", resolved_name)
+    if quote:
+        return {**quote, "source": "baostock"}
+
+    cached = list_kline(name=resolved_name or name, symbol=resolved_symbol or symbol, limit=2)
+    if cached:
+        latest = cached[-1]
+        previous = cached[-2] if len(cached) > 1 else latest
+        prev_close = float(previous["close_price"])
+        current = float(latest["close_price"])
+        change_pct = ((current - prev_close) / prev_close * 100) if prev_close else 0
+        return {
+            "symbol": latest.get("symbol") or resolved_symbol,
+            "name": latest.get("name") or resolved_name,
+            "current_price": current,
+            "change_pct": round(change_pct, 2),
+            "volume": latest["volume"],
+            "amount": latest["amount"],
+            "high_price": latest["high_price"],
+            "low_price": latest["low_price"],
+            "open_price": latest["open_price"],
+            "prev_close": prev_close,
+            "source": "local_cache",
+        }
+    return {"error": "quote not found", "source": "empty"}
+
 
 # Initialize database
 init_db()
@@ -170,15 +332,19 @@ async def post_kline(data: dict[str, Any]):
 
 @app.get("/api/kline/realtime")
 async def get_kline_realtime(name: str = "", symbol: str = "", days: int = 60):
-    return {"bars": fetch_kline(symbol, name, days)}
+    return build_realtime_kline_payload(name=name, symbol=symbol, days=days)
+
+
+@app.get("/api/kline/intraday")
+async def get_kline_intraday(name: str = "", symbol: str = "", period: int = 5, limit: int = 240):
+    return build_intraday_kline_payload(name=name, symbol=symbol, period=period, limit=limit)
 
 
 # === Quote ===
 
 @app.get("/api/quote")
 async def get_quote(name: str = "", symbol: str = ""):
-    quote = fetch_realtime_quote(symbol or "", name)
-    return quote or {"error": "quote not found"}
+    return build_quote_payload(name=name, symbol=symbol)
 
 
 # === Market ===
@@ -208,31 +374,8 @@ async def rebuild_advice_route():
 @app.get("/api/advice.csv")
 async def get_advice_csv():
     rows = list_advice()
-    output = io.StringIO()
-    headers = [
-        "标的", "持仓数量", "成本价", "当前参考价", "浮亏/浮盈比例",
-        "标的分类", "减仓触发价", "止损触发价", "加仓参考价",
-        "操作建议", "情景判断", "纪律通过"
-    ]
-    writer = csv.writer(output)
-    writer.writerow(headers)
-    for row in rows:
-        writer.writerow([
-            row["name"],
-            f"{row['quantity']}股",
-            f"{float(row['cost_price']):.2f}元",
-            f"{float(row['current_price']):.2f}元",
-            row.get("pnl_ratio_text") or f"{float(row['pnl_ratio']) * 100:+.1f}%",
-            row["category"],
-            row["trim_trigger"],
-            row["stop_trigger"],
-            row["add_reference"],
-            row["action_advice"],
-            row["scenario"],
-            "是" if int(row["discipline_passed"]) else "否",
-        ])
     return Response(
-        content=output.getvalue().encode("utf-8-sig"),
+        content=build_advice_csv(rows),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=holding_advice.csv"}
     )
@@ -248,6 +391,61 @@ async def get_analysis_reports():
 @app.post("/api/analysis/daily")
 async def post_daily_analysis(data: dict[str, Any] = None):
     return create_daily_analysis(data or {})
+
+
+@app.post("/api/analysis/volume")
+async def post_volume_analysis(data: dict[str, Any] = None):
+    """Perform stock-specific volume analysis using Python technical analysis + LLM."""
+    data = data or {}
+    stock_name = data.get("stock", "")
+    bars = data.get("bars", [])
+    quote = data.get("quote")
+
+    if not stock_name:
+        raise HTTPException(400, "缺少股票名称")
+
+    if not bars or len(bars) < 5:
+        raise HTTPException(400, "K线数据不足，需要至少5根K线")
+
+    # Step 1: Calculate technical metrics using Python
+    metrics = calculate_volume_metrics(bars)
+
+    # Step 2: Analyze volume signals
+    analysis = analyze_volume_signals(metrics)
+
+    # Step 3: Call LLM for intelligent interpretation
+    result = call_deepseek_for_volume(stock_name, metrics, analysis, bars, quote)
+
+    # Step 4: Save report to database
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO analysis_reports
+            (report_date, provider, model, status, prompt, content, raw_response, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                date.today().isoformat(),
+                result.provider,
+                result.model,
+                result.status,
+                f"volume analysis for {stock_name}",
+                result.content,
+                result.raw_response,
+                utc_now(),
+            ),
+        )
+
+    return {
+        "stock": stock_name,
+        "provider": result.provider,
+        "model": result.model,
+        "status": result.status,
+        "content": result.content,
+        "metrics": metrics,
+        "signals": analysis,
+        "report_id": cur.lastrowid,
+    }
 
 
 # === Settings ===

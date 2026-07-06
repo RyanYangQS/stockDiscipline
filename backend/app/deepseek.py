@@ -30,6 +30,131 @@ def default_transport(url: str, headers: dict[str, str], payload: dict[str, Any]
         return json.loads(body)
 
 
+def build_volume_analysis_prompt(stock_name: str, metrics: dict[str, Any], analysis: dict[str, Any], bars: list[dict[str, Any]], quote: dict[str, Any] | None = None) -> str:
+    """Build prompt for stock-specific volume analysis."""
+    recent_bars_summary = []
+    for bar in bars[-10:]:
+        recent_bars_summary.append({
+            "date": bar.get("trade_date", ""),
+            "close": bar.get("close_price", 0),
+            "volume": bar.get("volume", 0),
+            "turnover_rate": bar.get("turnover_rate", 0),
+        })
+
+    prompt = f"""你是一个严格执行交易纪律的股票量能分析专家。请对 {stock_name} 进行深入的量能分析。
+
+## 基本信息
+- 股票名称: {stock_name}
+- 分析日期: {metrics.get('trade_date', '')}
+- 数据范围: 近{metrics.get('bars_count', 30)}根K线
+
+## 技术指标数据
+### 量能指标
+- 最新成交量: {metrics['volume_metrics']['last_volume']}
+- 5日平均成交量: {metrics['volume_metrics']['avg_volume_5']}
+- 10日平均成交量: {metrics['volume_metrics']['avg_volume_10']}
+- 20日平均成交量: {metrics['volume_metrics']['avg_volume_20']}
+- 量比(5日): {metrics['volume_metrics']['volume_ratio_5']}
+- 量比(10日): {metrics['volume_metrics']['volume_ratio_10']}
+- 量比(20日): {metrics['volume_metrics']['volume_ratio_20']}
+- 换手率: {metrics['volume_metrics']['last_turnover_rate']}%
+- 成交额: {metrics['volume_metrics']['last_amount']}
+
+### 价格指标
+- 最新收盘价: {metrics['price_metrics']['last_close']}
+- 今日涨跌幅: {metrics['price_metrics']['change_pct']}%
+- 5日涨跌幅: {metrics['price_metrics']['change_5d']}%
+- 10日涨跌幅: {metrics['price_metrics']['change_10d']}%
+- 20日涨跌幅: {metrics['price_metrics']['change_20d']}%
+- 今日振幅: {metrics['price_metrics']['amplitude']}%
+
+### 均线系统
+- MA5: {metrics['ma_metrics']['ma5']}
+- MA10: {metrics['ma_metrics']['ma10']}
+- MA20: {metrics['ma_metrics']['ma20']}
+- 股价与MA5偏离: {metrics['ma_metrics']['price_vs_ma5']}%
+- 均线状态: {metrics['ma_metrics']['ma_trend']}
+
+### 识别的形态
+- 量价形态: {', '.join(metrics['patterns']['volume_price_patterns']) or '无明显特殊形态'}
+- K线形态: {', '.join(metrics['patterns']['kline_patterns']) or '标准K线'}
+- 连续上涨天数: {metrics['patterns']['consecutive_up']}
+- 连续下跌天数: {metrics['patterns']['consecutive_down']}
+
+### 位置指标
+- 近20日最高价: {metrics['position_metrics']['recent_20_high']}
+- 近20日最低价: {metrics['position_metrics']['recent_20_low']}
+- 距离高点: {metrics['position_metrics']['distance_from_high']}%
+- 距离低点: {metrics['position_metrics']['distance_from_low']}%
+
+## Python自动分析结果
+### 风险信号
+"""
+    for signal in analysis.get("risk_signals", []):
+        prompt += f"- [{signal['severity']}风险] {signal['type']}: {signal['description']}\n"
+
+    prompt += "\n### 机会信号\n"
+    for signal in analysis.get("opportunity_signals", []):
+        prompt += f"- [{signal['severity']}机会] {signal['type']}: {signal['description']}\n"
+
+    prompt += f"""
+### 总体判断
+- 风险等级: {analysis['risk_level']}
+- 操作建议: {analysis['action_suggestion']}
+- 量能状态: {analysis['summary']['volume_ratio_status']}
+- 换手状态: {analysis['summary']['turnover_status']}
+- 趋势状态: {analysis['summary']['trend_status']}
+- 价格位置: {analysis['summary']['price_position']}
+
+## 近10日K线摘要
+```json
+{json.dumps(recent_bars_summary, ensure_ascii=False, indent=2)}
+```
+
+## 实时行情(如有)
+"""
+    if quote:
+        prompt += f"""
+- 当前价: {quote.get('current_price', 'N/A')}
+- 今日涨跌: {quote.get('change_pct', 'N/A')}%
+"""
+    else:
+        prompt += "- 无实时行情数据\n"
+
+    prompt += """
+## 分析要求
+请基于以上数据进行专业分析，输出包含以下部分:
+
+### 1. 量能结构分析
+分析成交量变化趋势、量价配合关系、换手率含义
+
+### 2. 价格与均线分析
+分析均线支撑/压力情况、价格偏离程度、趋势强弱
+
+### 3. K线形态解读
+解读关键K线形态的技术含义、主力行为推测
+
+### 4. 风险与机会评估
+综合评估当前持仓风险和潜在机会，给出具体量化指标
+
+### 5. 操作建议
+给出明日操作策略，包括:
+- 是否适合持有/加仓/减仓
+- 关键触发价位(止损、减仓、加仓)
+- 需要关注的信号(放量、缩量、突破、跌破)
+
+### 6. 风险提示
+列出需要警惕的风险点，不要给出确定性预测或承诺收益
+
+分析风格要求:
+- 严格遵守交易纪律原则
+- 优先考虑风险控制，其次才是机会把握
+- 不做确定性预测，用概率语言描述
+- 关注主力行为迹象，但不做过度推断
+"""
+    return prompt
+
+
 def build_daily_prompt(context: dict[str, Any]) -> str:
     compact = json.dumps(context, ensure_ascii=False, indent=2)
     return f"""你是一个严格执行交易纪律的个人股票量能分析助手。
@@ -45,6 +170,125 @@ def build_daily_prompt(context: dict[str, Any]) -> str:
 输入数据：
 {compact}
 """
+
+
+def call_deepseek_for_volume(
+    stock_name: str,
+    metrics: dict[str, Any],
+    analysis: dict[str, Any],
+    bars: list[dict[str, Any]],
+    quote: dict[str, Any] | None = None,
+    transport: Transport = default_transport,
+    timeout: int = 60,
+) -> DeepSeekResult:
+    """Call DeepSeek for stock-specific volume analysis."""
+    db_config = load_llm_config()
+    key = db_config.get("api_key") if db_config else DEEPSEEK_API_KEY
+    selected_model = db_config.get("model") if db_config else DEEPSEEK_MODEL
+    selected_base_url = (db_config.get("base_url") if db_config else DEEPSEEK_BASE_URL).rstrip("/") if db_config else DEEPSEEK_BASE_URL.rstrip("/")
+
+    if not key:
+        return DeepSeekResult(
+            provider="local",
+            model="local-volume-analysis",
+            status="missing_api_key",
+            content=build_local_volume_report(stock_name, metrics, analysis),
+            raw_response="",
+        )
+
+    prompt = build_volume_analysis_prompt(stock_name, metrics, analysis, bars, quote)
+
+    payload = {
+        "model": selected_model,
+        "messages": [
+            {"role": "system", "content": "你是专业的股票量能分析师，严格遵守交易纪律，不做确定性预测，优先考虑风险控制。"},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.3,
+        "stream": False,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        raw = transport(f"{selected_base_url}/chat/completions", headers, payload, timeout)
+        content = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return DeepSeekResult(
+            provider="deepseek",
+            model=selected_model,
+            status="ok" if content else "empty_response",
+            content=content or "DeepSeek 返回为空，请检查模型或接口响应。",
+            raw_response=json.dumps(raw, ensure_ascii=False),
+        )
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+        return DeepSeekResult(
+            provider="deepseek",
+            model=selected_model,
+            status="error",
+            content=f"DeepSeek 调用失败：{exc}\n\n以下为本地技术分析：\n\n{build_local_volume_report(stock_name, metrics, analysis)}",
+            raw_response=str(exc),
+        )
+
+
+def build_local_volume_report(stock_name: str, metrics: dict[str, Any], analysis: dict[str, Any]) -> str:
+    """Build local volume analysis report when API key is not available."""
+    lines = [f"# {stock_name} 量能分析报告", ""]
+    lines.append("## 技术指标概览")
+    lines.append(f"- 最新收盘: {metrics['price_metrics']['last_close']}元")
+    lines.append(f"- 今日涨跌: {metrics['price_metrics']['change_pct']}%")
+    lines.append(f"- 量比(5日): {metrics['volume_metrics']['volume_ratio_5']}")
+    lines.append(f"- 换手率: {metrics['volume_metrics']['last_turnover_rate']}%")
+    lines.append(f"- 均线状态: {metrics['ma_metrics']['ma_trend']}")
+    lines.append("")
+
+    lines.append("## 量价形态")
+    patterns = metrics['patterns']['volume_price_patterns']
+    if patterns:
+        lines.append(f"- 识别形态: {', '.join(patterns)}")
+    else:
+        lines.append("- 量价配合正常，无明显特殊形态")
+    lines.append("")
+
+    lines.append("## K线形态")
+    kline_patterns = metrics['patterns']['kline_patterns']
+    if kline_patterns:
+        lines.append(f"- K线特征: {', '.join(kline_patterns)}")
+    else:
+        lines.append("- 标准K线形态")
+    lines.append("")
+
+    lines.append("## 风险信号")
+    for signal in analysis.get("risk_signals", []):
+        lines.append(f"- [{signal['severity']}] {signal['type']}: {signal['description']}")
+    if not analysis.get("risk_signals"):
+        lines.append("- 未检测到显著风险信号")
+    lines.append("")
+
+    lines.append("## 机会信号")
+    for signal in analysis.get("opportunity_signals", []):
+        lines.append(f"- [{signal['severity']}] {signal['type']}: {signal['description']}")
+    if not analysis.get("opportunity_signals"):
+        lines.append("- 未检测到明显机会信号")
+    lines.append("")
+
+    lines.append("## 总体判断")
+    lines.append(f"- 风险等级: {analysis['risk_level']}")
+    lines.append(f"- 建议操作: {analysis['action_suggestion']}")
+    lines.append("")
+
+    lines.append("## 操作建议")
+    lines.append("- 本报告为本地技术分析生成，未配置API Key")
+    lines.append("- 建议配置DeepSeek API Key获取更详细的分析")
+    lines.append("- 当前建议仅供参考，请结合市场实际情况决策")
+    lines.append("")
+
+    lines.append("## 风险提示")
+    lines.append("- 技术分析仅供参考，不构成投资建议")
+    lines.append("- 股市有风险，投资需谨慎")
+    lines.append("- 请结合消息面、基本面综合判断")
+
+    return "\n".join(lines)
 
 
 def call_deepseek(
