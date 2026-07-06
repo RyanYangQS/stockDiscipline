@@ -3,8 +3,15 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import date, timedelta
 from typing import Any
+
+# Disable proxy for AKShare requests (common issue in China)
+os.environ.pop('HTTP_PROXY', None)
+os.environ.pop('HTTPS_PROXY', None)
+os.environ.pop('http_proxy', None)
+os.environ.pop('https_proxy', None)
 
 logger = logging.getLogger(__name__)
 
