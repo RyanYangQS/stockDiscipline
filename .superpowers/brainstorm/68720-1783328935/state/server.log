@@ -53,3 +53,4 @@
 {"source":"user-event","type":"click","text":"C\n    \n      查看方案C: 卡片化设计\n      点击查看完整高清设计mockup\n      \n        特点: 渐变卡片、圆角阴影、现代感、适合年轻用户","choice":"view-c","id":null,"timestamp":1783329690001}
 {"type":"screen-added","file":"/Users/yangqingsong/workspace/work/self-project/stockDiscipline/.superpowers/brainstorm/68720-1783328935/content/design-c-full.html"}
 {"type":"screen-added","file":"/Users/yangqingsong/workspace/work/self-project/stockDiscipline/.superpowers/brainstorm/68720-1783328935/content/design-hybrid-ac.html"}
+{"type":"server-stopped","reason":"idle timeout"}
