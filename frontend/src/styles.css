@@ -1,0 +1,323 @@
+:root {
+  --bg: #f8fafc;
+  --panel: #fff;
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --primary: #176b87;
+  --primary-dark: #0f5268;
+  --danger: #b42318;
+  --danger-bg: #fef3f2;
+  --warn: #b54708;
+  --warn-bg: #fffaeb;
+  --ok: #067647;
+  --ok-bg: #ecfdf3;
+  --sidebar: #1e293b;
+  --sidebar-hover: #176b87;
+}
+
+/* 深色模式支持 - 根据系统设置自动切换 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --line: #334155;
+    /* primary, danger, warn, ok保持不变 */
+    /* sidebar保持深色背景不变 */
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+
+.site { min-height: 100vh; display: flex; }
+
+/* 侧边栏样式 */
+.sidebar {
+  width: 220px;
+  background: var(--sidebar);
+  color: #fff;
+  padding: 20px 0;
+  flex-shrink: 0;
+}
+
+.brand {
+  padding: 0 20px 25px;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-menu {
+  padding: 10px 20px;
+  margin: 0 15px 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sidebar-menu:hover { background: rgba(255,255,255,.08); }
+.sidebar-menu.active {
+  background: var(--sidebar-hover);
+  font-weight: 500;
+}
+
+.menu-icon-wrap {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,.05);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-menu.active .menu-icon-wrap {
+  background: rgba(255,255,255,.15);
+}
+
+/* 主应用区 */
+.app {
+  flex: 1;
+  padding: 25px;
+  background: var(--bg);
+}
+
+.page-head {
+  margin-bottom: 20px;
+}
+
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+h3 { font-size: 16px; }
+
+.page-head p { color: var(--muted); font-size: 14px; margin-top: 5px; }
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+/* 卡片系统 */
+.card {
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.card-icon-wrap {
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.card-title h3 { color: var(--ink); }
+.card-subtitle { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.card-actions { display: flex; gap: 10px; margin-left: auto; }
+.card-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+/* 指标卡片 */
+.metric-card {
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  padding: 20px;
+  border-left: 4px solid transparent;
+  margin-bottom: 20px;
+}
+
+.metric-card.primary { border-left-color: var(--primary); }
+.metric-card.success { border-left-color: var(--ok); }
+.metric-card.danger { border-left-color: var(--danger); }
+
+.metric-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.metric-icon-wrap.primary { background: var(--primary); }
+.metric-icon-wrap.success { background: var(--ok); }
+.metric-icon-wrap.danger { background: var(--danger); }
+
+.metric-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.metric-value { font-size: 28px; font-weight: 700; color: var(--ink); }
+.metric-value.danger { color: var(--danger); }
+.metric-value.success { color: var(--ok); }
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: var(--ink);
+  background: var(--panel);
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn:hover { box-shadow: 0 2px 4px rgba(0,0,0,.12); }
+.btn.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+
+/* 风险标签 */
+.risk-tag {
+  display: inline-flex;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.risk-tag.high { background: var(--danger); }
+.risk-tag.med { background: var(--warn); }
+.risk-tag.low { background: var(--ok); }
+
+/* 风险项卡片 */
+.risk-item {
+  padding: 15px;
+  background: var(--danger-bg);
+  border-radius: 10px;
+  border-left: 3px solid var(--danger);
+  margin-bottom: 10px;
+}
+
+.risk-item.med { background: var(--warn-bg); border-left-color: var(--warn); }
+
+/* 表格样式 */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1120px;
+}
+
+th, td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+th {
+  color: var(--muted);
+  background: #f7fafc;
+  font-weight: 600;
+}
+
+/* 响应式布局 */
+@media (max-width: 980px) {
+  .sidebar { width: 60px; }
+  .sidebar-menu { padding: 10px; margin: 0 5px 6px; justify-content: center; }
+  .sidebar-menu span { display: none; }
+  .brand span { display: none; }
+  .app { padding: 20px; }
+}
+
+.grid { display: grid; grid-template-columns: repeat(2,minmax(280px,1fr)); gap: 20px; }
+.grid.three { grid-template-columns: repeat(3,minmax(220px,1fr)); gap: 20px; }
+.form-grid { display: grid; grid-template-columns: repeat(2,minmax(150px,1fr)); gap: 12px; }
+
+label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
+input, select, textarea {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--panel);
+  font-size: 14px;
+}
+textarea { min-height: 120px; resize: vertical; }
+.wide { grid-column: 1/-1; }
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  max-width: 360px;
+  z-index: 20;
+}
+
+.report {
+  white-space: pre-wrap;
+  line-height: 1.65;
+  background: #f7fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.text-danger { color: var(--danger); }
+.text-ok { color: var(--ok); }
+.text-muted { color: var(--muted); }
