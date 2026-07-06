@@ -14,6 +14,8 @@
   --ok-bg: #ecfdf3;
   --sidebar: #1e293b;
   --sidebar-hover: #176b87;
+  --table-header: #f7fafc;
+  --shadow-card: 0 2px 8px rgba(0,0,0,.08);
 }
 
 /* 深色模式支持 - 根据系统设置自动切换 */
@@ -24,6 +26,7 @@
     --ink: #f1f5f9;
     --muted: #94a3b8;
     --line: #334155;
+    --table-header: #1e293b;
     /* primary, danger, warn, ok保持不变 */
     /* sidebar保持深色背景不变 */
   }
@@ -131,7 +134,7 @@ h3 { font-size: 16px; }
 .card {
   background: var(--panel);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  box-shadow: var(--shadow-card);
   padding: 20px;
   margin-bottom: 20px;
 }
@@ -170,7 +173,7 @@ h3 { font-size: 16px; }
 .metric-card {
   background: var(--panel);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  box-shadow: var(--shadow-card);
   padding: 20px;
   border-left: 4px solid transparent;
   margin-bottom: 20px;
@@ -226,6 +229,15 @@ h3 { font-size: 16px; }
 .btn.primary:hover { background: var(--primary-dark); }
 .btn.danger { color: var(--danger); border-color: var(--danger); }
 
+/* Accessibility focus states */
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* 风险标签 */
 .risk-tag {
   display: inline-flex;
@@ -270,7 +282,7 @@ th, td {
 
 th {
   color: var(--muted);
-  background: #f7fafc;
+  background: var(--table-header);
   font-weight: 600;
 }
 
@@ -312,7 +324,7 @@ textarea { min-height: 120px; resize: vertical; }
 .report {
   white-space: pre-wrap;
   line-height: 1.65;
-  background: #f7fafc;
+  background: var(--table-header);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 16px;
