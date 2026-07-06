@@ -1,7 +1,7 @@
 <template>
   <Card title="持仓操作建议表" icon="holdings" tone="primary">
     <template #actions>
-      <button class="btn" @click="showAddModal = true">新增持仓</button>
+      <button class="btn" @click="openAddModal">新增持仓</button>
       <button class="btn" :disabled="rebuilding" @click="rebuild">{{ rebuilding ? '生成中...' : '本地规则建议' }}</button>
       <button class="btn primary" :disabled="aiLoading" @click="generateAiAdvice">{{ aiLoading ? '分析中...' : 'AI生成建议' }}</button>
       <a class="btn" href="/api/advice.csv">导出 CSV</a>
@@ -25,7 +25,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in advice" :key="row.name">
+          <tr v-for="row in advice" :key="row.position_id">
             <td class="col-name">
               <strong>{{ row.name }}</strong>
               <br><span class="text-muted small">{{ row.symbol || '-' }}</span>
@@ -48,7 +48,7 @@
             <td class="col-action">
               <div class="action-buttons">
                 <button class="btn-text" @click="openEditModal(row)">编辑</button>
-                <button class="btn-text danger" @click="remove(row)">删除</button>
+                <button class="btn-text danger" @click="confirmDelete(row)">删除</button>
               </div>
             </td>
           </tr>
@@ -58,65 +58,47 @@
     <p v-if="!advice.length" class="text-muted">暂无持仓记录，点击"新增持仓"添加</p>
   </Card>
 
-  <!-- 新增持仓弹窗 -->
-  <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
+  <!-- 持仓弹窗（新增/编辑共用） -->
+  <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>新增持仓</h3>
-        <button class="modal-close" @click="showAddModal = false">×</button>
+        <h3>{{ isEditing ? '编辑持仓 - ' + form.name : '新增持仓' }}</h3>
+        <button class="modal-close" @click="closeModal">×</button>
       </div>
-      <form @submit.prevent="saveNewPosition">
+      <form @submit.prevent="savePosition">
         <div class="form-grid">
-          <label>股票代码<input v-model="newForm.symbol" placeholder="如: sh.600519" /></label>
-          <label>股票名称<input v-model="newForm.name" required placeholder="必填" /></label>
-          <label>持仓数量<input v-model.number="newForm.quantity" type="number" min="1" required /></label>
-          <label>成本价<input v-model.number="newForm.cost_price" type="number" step="0.01" required /></label>
+          <label>股票代码<input v-model="form.symbol" placeholder="如: sh.600519" /></label>
+          <label>股票名称<input v-model="form.name" required placeholder="必填" /></label>
+          <label>持仓数量<input v-model.number="form.quantity" type="number" min="1" required /></label>
+          <label>成本价<input v-model.number="form.cost_price" type="number" step="0.01" required /></label>
           <label>当前价
             <div class="price-input-group">
-              <input v-model.number="newForm.current_price" type="number" step="0.01" required />
-              <button class="btn-mini" @click="fetchPriceForNew" type="button">获取实时价格</button>
+              <input v-model.number="form.current_price" type="number" step="0.01" required />
+              <button class="btn-mini" @click.prevent="fetchCurrentPrice">获取实时价格</button>
             </div>
           </label>
-          <label>分类<select v-model="newForm.category"><option v-for="c in categories" :key="c">{{ c }}</option></select></label>
-          <label>行业<input v-model="newForm.sector" placeholder="如: 酒类" /></label>
-          <label>备注<input v-model="newForm.note" placeholder="持仓说明" /></label>
+          <label>分类<select v-model="form.category"><option v-for="c in categories" :key="c">{{ c }}</option></select></label>
+          <label>行业<input v-model="form.sector" placeholder="如: 酒类" /></label>
+          <label>备注<input v-model="form.note" placeholder="持仓说明" /></label>
         </div>
         <div class="modal-actions">
-          <button class="btn" type="button" @click="showAddModal = false">取消</button>
-          <button class="btn primary" type="submit">保存</button>
+          <button class="btn" type="button" @click="closeModal">取消</button>
+          <button class="btn primary" type="submit">{{ isEditing ? '保存修改' : '保存' }}</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 编辑持仓弹窗 -->
-  <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>编辑持仓 - {{ editForm.name }}</h3>
-        <button class="modal-close" @click="showEditModal = false">×</button>
+  <!-- 删除确认弹窗 -->
+  <div v-if="showDeleteConfirm" class="modal-overlay confirm-overlay" @click.self="showDeleteConfirm = false">
+    <div class="confirm-dialog">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-title">确认删除</div>
+      <div class="confirm-message">确定要删除持仓 "<strong>{{ deleteTarget?.name }}</strong>" 吗？此操作不可恢复。</div>
+      <div class="confirm-actions">
+        <button class="btn" @click="showDeleteConfirm = false">取消</button>
+        <button class="btn danger" @click="doDelete">确认删除</button>
       </div>
-      <form @submit.prevent="saveEditPosition">
-        <div class="form-grid">
-          <label>股票代码<input v-model="editForm.symbol" placeholder="如: sh.600519" /></label>
-          <label>股票名称<input v-model="editForm.name" required /></label>
-          <label>持仓数量<input v-model.number="editForm.quantity" type="number" min="1" required /></label>
-          <label>成本价<input v-model.number="editForm.cost_price" type="number" step="0.01" required /></label>
-          <label>当前价
-            <div class="price-input-group">
-              <input v-model.number="editForm.current_price" type="number" step="0.01" required />
-              <button class="btn-mini" @click="fetchPriceForEdit" type="button">获取实时价格</button>
-            </div>
-          </label>
-          <label>分类<select v-model="editForm.category"><option v-for="c in categories" :key="c">{{ c }}</option></select></label>
-          <label>行业<input v-model="editForm.sector" /></label>
-          <label>备注<input v-model="editForm.note" /></label>
-        </div>
-        <div class="modal-actions">
-          <button class="btn" type="button" @click="showEditModal = false">取消</button>
-          <button class="btn primary" type="submit">保存</button>
-        </div>
-      </form>
     </div>
   </div>
 </template>
@@ -135,17 +117,21 @@ function pnlClass(ratio) {
 
 const emit = defineEmits(["toast"]);
 const advice = ref([]);
-const positions = ref([]);
 const categories = ["核心赛道", "观察仓", "弱势跟风", "高风险票", "恐慌释放观察"];
 const rebuilding = ref(false);
 const aiLoading = ref(false);
-const showAddModal = ref(false);
-const showEditModal = ref(false);
-const newForm = reactive({ symbol: "", name: "", quantity: 100, cost_price: 0, current_price: 0, category: "观察仓", sector: "", note: "" });
-const editForm = reactive({ id: 0, symbol: "", name: "", quantity: 100, cost_price: 0, current_price: 0, category: "观察仓", sector: "", note: "" });
+
+// Modal state
+const showModal = ref(false);
+const isEditing = ref(false);
+const form = reactive({ id: 0, symbol: "", name: "", quantity: 100, cost_price: 0, current_price: 0, category: "观察仓", sector: "", note: "" });
+
+// Delete confirm state
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref(null);
 
 async function load() {
-  [advice.value, positions.value] = await Promise.all([apiGet("/api/advice"), apiGet("/api/positions")]);
+  advice.value = await apiGet("/api/advice");
 }
 
 async function rebuild() {
@@ -170,32 +156,41 @@ async function generateAiAdvice() {
   }
 }
 
+function openAddModal() {
+  isEditing.value = false;
+  Object.assign(form, { id: 0, symbol: "", name: "", quantity: 100, cost_price: 0, current_price: 0, category: "观察仓", sector: "", note: "" });
+  showModal.value = true;
+}
+
 function openEditModal(row) {
-  const position = positions.value.find(p => p.id === row.position_id);
-  if (!position) return;
-  Object.assign(editForm, {
-    id: position.id,
-    symbol: position.symbol || "",
-    name: position.name,
-    quantity: position.quantity,
-    cost_price: position.cost_price,
-    current_price: position.current_price,
-    category: position.category,
-    sector: position.sector || "",
-    note: position.note || "",
+  isEditing.value = true;
+  Object.assign(form, {
+    id: row.position_id,
+    symbol: row.symbol || "",
+    name: row.name,
+    quantity: row.quantity,
+    cost_price: row.cost_price,
+    current_price: row.current_price,
+    category: row.category,
+    sector: row.sector || "",
+    note: row.note || "",
   });
-  showEditModal.value = true;
+  showModal.value = true;
 }
 
-async function fetchPriceForNew() {
-  if (!newForm.name) {
+function closeModal() {
+  showModal.value = false;
+}
+
+async function fetchCurrentPrice() {
+  if (!form.name) {
     emit("toast", "请先填写股票名称");
     return;
   }
   try {
-    const quote = await apiGet(`/api/quote?name=${newForm.name}&symbol=${newForm.symbol || ''}`);
+    const quote = await apiGet(`/api/quote?name=${form.name}&symbol=${form.symbol || ''}`);
     if (quote && quote.current_price) {
-      newForm.current_price = quote.current_price;
+      form.current_price = quote.current_price;
       emit("toast", `现价已更新: ${quote.current_price}元`);
     } else {
       emit("toast", "无法获取实时价格");
@@ -205,46 +200,34 @@ async function fetchPriceForNew() {
   }
 }
 
-async function fetchPriceForEdit() {
-  if (!editForm.name) {
-    emit("toast", "请先填写股票名称");
-    return;
-  }
-  try {
-    const quote = await apiGet(`/api/quote?name=${editForm.name}&symbol=${editForm.symbol || ''}`);
-    if (quote && quote.current_price) {
-      editForm.current_price = quote.current_price;
-      emit("toast", `现价已更新: ${quote.current_price}元`);
-    } else {
-      emit("toast", "无法获取实时价格");
-    }
-  } catch (err) {
-    emit("toast", `获取价格失败: ${err.message}`);
-  }
-}
-
-async function saveNewPosition() {
-  if (!newForm.name) {
+async function savePosition() {
+  if (!form.name) {
     emit("toast", "请填写股票名称");
     return;
   }
-  await apiPost("/api/positions", { ...newForm });
-  showAddModal.value = false;
-  Object.assign(newForm, { symbol: "", name: "", quantity: 100, cost_price: 0, current_price: 0, category: "观察仓", sector: "", note: "" });
+
+  if (isEditing.value) {
+    await apiPut(`/api/positions/${form.id}`, { ...form });
+    emit("toast", "持仓已更新");
+  } else {
+    await apiPost("/api/positions", { ...form });
+    emit("toast", "持仓已添加");
+  }
+
+  closeModal();
   await rebuild();
-  emit("toast", "持仓已添加");
 }
 
-async function saveEditPosition() {
-  await apiPut(`/api/positions/${editForm.id}`, { ...editForm });
-  showEditModal.value = false;
-  await rebuild();
-  emit("toast", "持仓已更新");
+function confirmDelete(row) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
 }
 
-async function remove(row) {
-  if (!confirm(`确认删除持仓 "${row.name}"?`)) return;
-  await apiDelete(`/api/positions/${row.position_id}`);
+async function doDelete() {
+  if (!deleteTarget.value) return;
+  await apiDelete(`/api/positions/${deleteTarget.value.position_id}`);
+  showDeleteConfirm.value = false;
+  deleteTarget.value = null;
   await rebuild();
   emit("toast", "持仓已删除");
 }
@@ -253,7 +236,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 </script>
 
 <style scoped>
-/* Scrollable container */
+/* Table styles */
 .table-wrap {
   max-height: 500px;
   overflow-x: auto;
@@ -262,7 +245,6 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   border: 1px solid var(--line);
 }
 
-/* Table base */
 .holdings-table {
   width: 100%;
   border-collapse: collapse;
@@ -292,66 +274,22 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 }
 
 /* Column widths */
-.col-name {
-  min-width: 100px;
-  max-width: 120px;
-}
-
-.col-qty {
-  min-width: 70px;
-}
-
-.col-cost, .col-price {
-  min-width: 80px;
-}
-
-.col-pnl {
-  min-width: 70px;
-  font-weight: 600;
-}
-
-.col-cat {
-  min-width: 90px;
-}
-
-.col-scenario {
-  min-width: 120px;
-}
-
-.col-trigger {
-  min-width: 140px;
-  white-space: normal;
-  line-height: 1.4;
-}
-
-.col-add {
-  min-width: 120px;
-  white-space: normal;
-  line-height: 1.4;
-}
-
-.col-advice {
-  min-width: 200px;
-  max-width: 280px;
-  white-space: normal;
-}
-
-.col-action {
-  min-width: 80px;
-  width: 100px;
-  text-align: center;
-}
+.col-name { min-width: 100px; max-width: 120px; }
+.col-qty { min-width: 70px; }
+.col-cost, .col-price { min-width: 80px; }
+.col-pnl { min-width: 70px; font-weight: 600; }
+.col-cat { min-width: 90px; }
+.col-scenario { min-width: 120px; }
+.col-trigger { min-width: 140px; white-space: normal; line-height: 1.4; }
+.col-add { min-width: 120px; white-space: normal; line-height: 1.4; }
+.col-advice { min-width: 200px; max-width: 280px; white-space: normal; }
+.col-action { min-width: 80px; width: 100px; text-align: center; }
 
 /* PnL colors */
-.pnl-positive {
-  color: #dc2626;
-}
+.pnl-positive { color: #dc2626; }
+.pnl-negative { color: #16a34a; }
 
-.pnl-negative {
-  color: #16a34a;
-}
-
-/* Risk/Scenario tags */
+/* Risk tags */
 .risk-tag {
   display: inline-block;
   padding: 3px 10px;
@@ -359,51 +297,18 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   font-size: 12px;
   font-weight: 500;
 }
-
-.risk-tag.is-high {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.risk-tag.is-medium-high {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.risk-tag.is-medium {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.risk-tag.is-low {
-  background: #d1fae5;
-  color: #059669;
-}
+.risk-tag.is-high { background: #fee2e2; color: #dc2626; }
+.risk-tag.is-medium-high { background: #fef3c7; color: #d97706; }
+.risk-tag.is-medium { background: #e5e7eb; color: #6b7280; }
+.risk-tag.is-low { background: #d1fae5; color: #059669; }
 
 /* Advice content */
-.advice-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.advice-content { display: flex; flex-direction: column; gap: 4px; }
+.advice-action { font-weight: 600; color: var(--ink); }
+.advice-reason { font-size: 11px; line-height: 1.3; }
 
-.advice-action {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.advice-reason {
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-/* Action buttons - text style */
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
+/* Action buttons */
+.action-buttons { display: flex; gap: 12px; justify-content: center; }
 .btn-text {
   padding: 2px 0;
   font-size: 13px;
@@ -413,14 +318,8 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   border: none;
   font-weight: 500;
 }
-
-.btn-text:hover {
-  text-decoration: underline;
-}
-
-.btn-text.danger {
-  color: #dc2626;
-}
+.btn-text:hover { text-decoration: underline; }
+.btn-text.danger { color: #dc2626; }
 
 /* Modal styles */
 .modal-overlay {
@@ -467,9 +366,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   line-height: 1;
 }
 
-.modal-close:hover {
-  color: var(--ink);
-}
+.modal-close:hover { color: var(--ink); }
 
 .form-grid {
   display: grid;
@@ -498,9 +395,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   align-items: center;
 }
 
-.price-input-group input {
-  flex: 1;
-}
+.price-input-group input { flex: 1; }
 
 .btn-mini {
   padding: 6px 12px;
@@ -512,9 +407,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   color: var(--ink);
 }
 
-.btn-mini:hover {
-  background: var(--table-header);
-}
+.btn-mini:hover { background: var(--table-header); }
 
 .modal-actions {
   display: flex;
@@ -523,13 +416,63 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   margin-top: 20px;
 }
 
-.small {
-  font-size: 11px;
+/* Confirm dialog styles */
+.confirm-overlay {
+  z-index: 200;
 }
 
+.confirm-dialog {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 32px;
+  width: 400px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.confirm-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.confirm-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.confirm-message {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.confirm-message strong {
+  color: var(--ink);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.btn.danger {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.btn.danger:hover {
+  background: #b91c1c;
+}
+
+.small { font-size: 11px; }
+
 @media (max-width: 640px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+  .form-grid { grid-template-columns: 1fr; }
+  .confirm-dialog { padding: 24px; }
 }
 </style>
