@@ -60,13 +60,18 @@ const toneClass = computed(() => `tone-${props.tone}`);
 .card-icon-wrap {
   width: 40px;
   height: 40px;
-  background: var(--primary);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
 }
+
+.tone-default .card-icon-wrap { background: var(--line); }
+.tone-primary .card-icon-wrap { background: var(--primary); }
+.tone-danger .card-icon-wrap { background: var(--danger); }
+.tone-warning .card-icon-wrap { background: var(--warn); }
+.tone-success .card-icon-wrap { background: var(--ok); }
 
 .card-title-area h3 {
   margin: 0;
