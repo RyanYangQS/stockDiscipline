@@ -8,7 +8,7 @@
     </template>
     <div v-if="dataStatus" class="data-status">
       <span :class="dataStatus.available ? 'status-ok' : 'status-error'">
-        {{ dataStatus.available ? `AKShare 已连接 (${dataStatus.stocks_count} 只股票)` : `数据源未连接: ${dataStatus.error}` }}
+        {{ dataStatus.available ? (dataStatus.message || '数据源已连接') : `数据源未连接: ${dataStatus.error}` }}
       </span>
     </div>
     <KlineChart :bars="bars" />

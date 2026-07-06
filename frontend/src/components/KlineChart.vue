@@ -18,7 +18,11 @@ let chart = null;
 let resizeObserver = null;
 
 function initChart() {
-  if (!chartEl.value || chart) return;
+  if (!chartEl.value) return;
+  if (chart) {
+    dispose(chart);
+    chart = null;
+  }
   chart = init(chartEl.value);
   chart.setStyles({
     grid: {
@@ -43,18 +47,20 @@ function initChart() {
     if (chart) chart.resize();
   });
   resizeObserver.observe(chartEl.value);
-  updateData();
+  if (props.bars.length) {
+    updateData();
+  }
 }
 
 function updateData() {
-  if (!chart) return;
+  if (!chart || !props.bars.length) return;
   const data = props.bars.map((bar) => ({
     timestamp: new Date(`${bar.trade_date}T00:00:00`).getTime(),
-    open: Number(bar.open_price),
-    high: Number(bar.high_price),
-    low: Number(bar.low_price),
-    close: Number(bar.close_price),
-    volume: Number(bar.volume),
+    open: Number(bar.open_price) || 0,
+    high: Number(bar.high_price) || 0,
+    low: Number(bar.low_price) || 0,
+    close: Number(bar.close_price) || 0,
+    volume: Number(bar.volume) || 0,
     turnover: Number(bar.amount || 0)
   }));
   chart.applyNewData(data);
