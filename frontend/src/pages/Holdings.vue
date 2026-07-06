@@ -4,6 +4,7 @@
       <button class="btn" @click="openAddModal">新增持仓</button>
       <button class="btn" :disabled="rebuilding" @click="rebuild">{{ rebuilding ? '生成中...' : '本地规则建议' }}</button>
       <button class="btn primary" :disabled="aiLoading" @click="generateAiAdvice">{{ aiLoading ? '分析中...' : 'AI生成建议' }}</button>
+      <button class="btn" :disabled="refreshing" @click="manualRefreshPrices">{{ refreshing ? '更新中...' : '刷新现价' }}</button>
       <a class="btn" href="/api/advice.csv">导出 CSV</a>
     </template>
     <div class="table-wrap">
@@ -113,7 +114,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import Card from "../components/Card.vue";
 import { apiDelete, apiGet, apiPost, apiPut } from "../services/api";
 import { money, pct, riskClass } from "../services/format";
@@ -144,6 +145,37 @@ const advice = ref([]);
 const categories = ["核心赛道", "观察仓", "弱势跟风", "高风险票", "恐慌释放观察"];
 const rebuilding = ref(false);
 const aiLoading = ref(false);
+const refreshing = ref(false);
+let displayTimer = null;
+
+// Timer to refresh display (backend handles actual price updates)
+function startDisplayTimer() {
+  stopDisplayTimer();
+  // Refresh display every minute during trading hours, every 5 minutes otherwise
+  displayTimer = setInterval(() => {
+    load();
+  }, 60000);
+}
+
+function stopDisplayTimer() {
+  if (displayTimer) {
+    clearInterval(displayTimer);
+    displayTimer = null;
+  }
+}
+
+async function manualRefreshPrices() {
+  refreshing.value = true;
+  try {
+    const result = await apiPost("/api/positions/refresh-prices");
+    await load();
+    emit("toast", `已更新 ${result.updated || 0} 只持仓现价`);
+  } catch (err) {
+    emit("toast", `更新价格失败: ${err.message}`);
+  } finally {
+    refreshing.value = false;
+  }
+}
 
 // Modal state
 const showModal = ref(false);
@@ -256,7 +288,12 @@ async function doDelete() {
   emit("toast", "持仓已删除");
 }
 
-onMounted(() => load().catch((err) => emit("toast", err.message)));
+onMounted(() => {
+  load().catch((err) => emit("toast", err.message));
+  startDisplayTimer();
+});
+
+onBeforeUnmount(stopDisplayTimer);
 </script>
 
 <style scoped>

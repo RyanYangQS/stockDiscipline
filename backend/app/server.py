@@ -5,7 +5,8 @@ import csv
 import io
 import json
 import mimetypes
-from datetime import date
+import threading
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 
@@ -213,6 +214,82 @@ init_db()
 seed_if_empty()
 rebuild_advice()
 
+
+# === Background Price Scheduler ===
+
+def is_trading_time() -> bool:
+    """Check if current time is within trading hours (China A-shares)."""
+    now = datetime.now()
+    current_time = now.time()
+    weekday = now.weekday()
+
+    # Weekend: closed
+    if weekday >= 5:  # Saturday=5, Sunday=6
+        return False
+
+    # Morning session: 9:30-11:30
+    if time(9, 30) <= current_time <= time(11, 30):
+        return True
+
+    # Afternoon session: 13:00-15:00
+    if time(13, 0) <= current_time <= time(15, 0):
+        return True
+
+    return False
+
+
+def update_position_prices() -> int:
+    """Update current prices for all positions from real-time quotes."""
+    positions = list_positions()
+    updated_count = 0
+    for position in positions:
+        try:
+            quote = fetch_realtime_quote(position.get("symbol", ""), position.get("name", ""))
+            if quote and quote.get("current_price"):
+                update_position(position["id"], {"current_price": quote["current_price"]})
+                updated_count += 1
+        except Exception:
+            pass
+    return updated_count
+
+
+def price_scheduler_loop():
+    """Background thread that updates prices based on trading schedule."""
+    import time as time_module
+
+    while True:
+        now = datetime.now()
+        current_time = now.time()
+        weekday = now.weekday()
+
+        # Calculate next update interval
+        if weekday >= 5:  # Weekend
+            # Sleep until Monday 9:15
+            sleep_seconds = 3600  # Check every hour
+        elif is_trading_time():
+            # During trading: update every minute
+            update_position_prices()
+            sleep_seconds = 60
+        elif time(9, 15) <= current_time < time(9, 30):
+            # Pre-market: update once at 9:15
+            update_position_prices()
+            sleep_seconds = 900  # 15 minutes
+        elif time(15, 0) < current_time <= time(15, 5):
+            # After-market: update once at 15:05
+            update_position_prices()
+            sleep_seconds = 900  # 15 minutes
+        else:
+            # Outside trading hours: check every 30 minutes
+            sleep_seconds = 1800
+
+        time_module.sleep(sleep_seconds)
+
+
+# Start background scheduler
+price_thread = threading.Thread(target=price_scheduler_loop, daemon=True)
+price_thread.start()
+
+
 # Create FastAPI app
 app = FastAPI(
     title="Stock Discipline",
@@ -259,6 +336,29 @@ async def post_position(data: dict[str, Any]):
 @app.put("/api/positions/{position_id}")
 async def put_position(position_id: int, data: dict[str, Any]):
     return update_position(position_id, data)
+
+
+@app.post("/api/positions/refresh-prices")
+async def refresh_all_prices():
+    """Refresh current prices for all positions from real-time quotes."""
+    positions = list_positions()
+    updated = []
+    for position in positions:
+        try:
+            quote = fetch_realtime_quote(position.get("symbol", ""), position.get("name", ""))
+            if quote and quote.get("current_price"):
+                update_position(position["id"], {"current_price": quote["current_price"]})
+                updated.append({
+                    "name": position["name"],
+                    "old_price": position["current_price"],
+                    "new_price": quote["current_price"],
+                })
+        except Exception as exc:
+            updated.append({
+                "name": position["name"],
+                "error": str(exc),
+            })
+    return {"updated": len(updated), "details": updated}
 
 
 @app.delete("/api/positions/{position_id}")
