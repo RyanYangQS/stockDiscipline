@@ -6,7 +6,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, load_llm_config
+from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+from .db import load_llm_config
 
 
 Transport = Callable[[str, dict[str, str], dict[str, Any], int], dict[str, Any]]

@@ -161,3 +161,12 @@ def row_to_dict(row):
 
 def rows_to_dicts(rows):
     return [dict(row) for row in rows]
+
+
+def load_llm_config() -> dict | None:
+    """Load active LLM config from database, return None if not configured."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT provider, api_key, base_url, model FROM llm_config WHERE is_active = 1 LIMIT 1"
+        ).fetchone()
+        return row_to_dict(row)
