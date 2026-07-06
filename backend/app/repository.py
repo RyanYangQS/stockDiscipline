@@ -552,7 +552,7 @@ def list_analysis_reports() -> list[dict[str, Any]]:
 
 def deepseek_status() -> dict[str, Any]:
     from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
-from .db import load_llm_config
+    from .db import load_llm_config
 
     db_config = load_llm_config()
     if db_config:
