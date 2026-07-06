@@ -1,60 +1,70 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PORT="${PORT:-8080}"
-HOST="${HOST:-127.0.0.1}"
-PID_FILE="$ROOT_DIR/stock-discipline.pid"
-LOG_FILE="$ROOT_DIR/stock-discipline.log"
-ENV_FILE="$ROOT_DIR/.env.local"
+# Stock Discipline - 统一启动脚本
 
-if [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-  echo "Stock Discipline is already running: pid $(cat "$PID_FILE")"
-  exit 0
-fi
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BACKEND_DIR="$PROJECT_DIR/backend"
+FRONTEND_DIR="$PROJECT_DIR/frontend"
 
-cd "$ROOT_DIR"
-if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
-export ROOT_DIR HOST PORT LOG_FILE PID_FILE
-python3 - <<'PY'
-import os
-import subprocess
-from pathlib import Path
+echo "=== Stock Discipline 启动 ==="
 
-root = Path(os.environ["ROOT_DIR"])
-log_path = Path(os.environ["LOG_FILE"])
-pid_path = Path(os.environ["PID_FILE"])
-log = log_path.open("ab", buffering=0)
-process = subprocess.Popen(
-    ["python3", "-u", "backend/run.py", "--host", os.environ["HOST"], "--port", os.environ["PORT"]],
-    cwd=root,
-    stdin=subprocess.DEVNULL,
-    stdout=log,
-    stderr=subprocess.STDOUT,
-    start_new_session=True,
-)
-pid_path.write_text(str(process.pid), encoding="utf-8")
-PY
+# 检查依赖
+check_dependencies() {
+    echo "检查 Python 依赖..."
+    if ! python3 -c "import akshare" 2>/dev/null; then
+        echo "  [可选] AKShare 未安装: pip3 install akshare"
+    fi
+    if ! python3 -c "import requests, bs4" 2>/dev/null; then
+        echo "  [可选] requests/beautifulsoup4 未安装: pip3 install requests beautifulsoup4"
+    fi
 
-sleep 1
-if ! kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-  echo "Stock Discipline failed to start. Log:"
-  tail -80 "$LOG_FILE" || true
-  rm -f "$PID_FILE"
-  exit 1
-fi
+    echo "检查前端依赖..."
+    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+        echo "  安装前端依赖..."
+        cd "$FRONTEND_DIR" && npm install
+    fi
+}
 
-if command -v curl >/dev/null 2>&1; then
-  if ! curl -fsS --max-time 3 "http://127.0.0.1:$PORT/api/health" >/dev/null; then
-    echo "Stock Discipline process started but health check failed. Log:"
-    tail -80 "$LOG_FILE" || true
-    exit 1
-  fi
-fi
+# 停止旧进程
+stop_old_processes() {
+    echo "停止旧进程..."
+    lsof -i :8080-8089 -i :5173-5179 | grep LISTEN | awk '{print $2}' | xargs -I {} kill -9 {} 2>/dev/null
+    sleep 1
+}
 
-echo "Stock Discipline started at http://$HOST:$PORT, pid $(cat "$PID_FILE")"
+# 启动后端
+start_backend() {
+    echo "启动后端服务器..."
+    cd "$BACKEND_DIR"
+    python3 run.py &
+    BACKEND_PID=$!
+    sleep 2
+    echo "后端 PID: $BACKEND_PID"
+}
+
+# 启动前端
+start_frontend() {
+    echo "启动前端开发服务器..."
+    cd "$FRONTEND_DIR"
+    npm run dev &
+    FRONTEND_PID=$!
+    sleep 2
+    echo "前端 PID: $FRONTEND_PID"
+}
+
+# 主流程
+check_dependencies
+stop_old_processes
+start_backend
+start_frontend
+
+echo ""
+echo "=== 启动完成 ==="
+echo "后端: http://127.0.0.1:8080 (或更高端口)"
+echo "前端: http://127.0.0.1:5173 (或更高端口)"
+echo ""
+echo "按 Ctrl+C 停止所有服务"
+
+# 等待子进程
+trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" INT TERM
+wait
