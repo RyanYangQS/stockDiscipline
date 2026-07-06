@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .config import DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DIR, FRONTEND_DIST_DIR
+from .data_sources import check_akshare_available, fetch_kline, fetch_realtime_quote
 from .db import init_db
 from .repository import (
     create_daily_analysis,
@@ -192,6 +193,21 @@ class Handler(BaseHTTPRequestHandler):
                 return set_active_llm_config(config_id)
             if method == "POST" and path.endswith("/test"):
                 return test_llm_config(config_id)
+        if method == "GET" and path == "/api/data/status":
+            return check_akshare_available()
+        if method == "GET" and path.startswith("/api/kline/realtime"):
+            # Parse symbol from path like /api/kline/realtime/300750
+            parts = path.split("/")
+            symbol = parts[-1] if len(parts) > 4 and parts[-1].isdigit() else query.get("symbol", [""])[0]
+            name = query.get("name", [""])[0]
+            days = int(query.get("days", ["60"])[0])
+            return {"bars": fetch_kline(symbol, name, days)}
+        if method == "GET" and path.startswith("/api/quote/"):
+            symbol = self._path_id(path, "/api/quote/") if path.split("/")[-1].isdigit() else ""
+            symbol = symbol or query.get("symbol", [""])[0]
+            name = query.get("name", [""])[0]
+            quote = fetch_realtime_quote(str(symbol), name)
+            return quote or {"error": "quote not found"}
         raise ApiError(404, "api not found")
 
     def _path_id(self, path: str, prefix: str) -> int:
