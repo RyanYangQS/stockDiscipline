@@ -11,9 +11,10 @@
   "dependencies": {
     "@vitejs/plugin-vue": "4.6.2",
     "element-plus": "2.8.4",
+    "highlight.js": "^11.11.1",
     "klinecharts": "9.8.12",
+    "marked": "^18.0.5",
     "vite": "4.5.5",
     "vue": "3.4.38"
-  },
-  "devDependencies": {}
+  }
 }
