@@ -22,8 +22,94 @@
     <KlineChart :bars="bars" :mode="chartMode" @request-more-history="loadMoreHistory" />
     <p v-if="!bars.length" class="text-muted">暂无K线数据，请点击"刷新K线"</p>
   </Card>
-  <Card v-if="aiReport" title="AI量能分析报告" icon="ai" tone="primary">
-    <MarkdownRender :content="aiReport" />
+  <Card v-if="aiMetrics || aiReport" title="AI量能分析报告" icon="ai" tone="primary">
+    <!-- 关键指标速览 -->
+    <div v-if="aiMetrics && aiSignals" class="analysis-summary">
+      <div class="summary-header">
+        <span class="stock-name">{{ selectedName }}</span>
+        <span class="analysis-date">{{ aiMetrics.trade_date }}</span>
+      </div>
+      <div class="metrics-grid">
+        <!-- 核心价格指标 -->
+        <div class="metric-item">
+          <span class="metric-label">最新收盘</span>
+          <span class="metric-value">{{ aiMetrics.price_metrics?.last_close?.toFixed(2) }}元</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">今日涨跌</span>
+          <span :class="['metric-value', getChangeClass(aiMetrics.price_metrics?.change_pct)]">
+            {{ formatChange(aiMetrics.price_metrics?.change_pct) }}
+          </span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">量比(5日)</span>
+          <span :class="['metric-value', getVolumeRatioClass(aiMetrics.volume_metrics?.volume_ratio_5)]">
+            {{ aiMetrics.volume_metrics?.volume_ratio_5?.toFixed(2) }}
+          </span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">换手率</span>
+          <span :class="['metric-value', getTurnoverClass(aiMetrics.volume_metrics?.last_turnover_rate)]">
+            {{ aiMetrics.volume_metrics?.last_turnover_rate?.toFixed(2) }}%
+          </span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">均线状态</span>
+          <span :class="['metric-value', getMaTrendClass(aiMetrics.ma_metrics?.ma_trend)]">
+            {{ aiMetrics.ma_metrics?.ma_trend }}
+          </span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">距20日高点</span>
+          <span :class="['metric-value', getDistanceClass(aiMetrics.position_metrics?.distance_from_high)]">
+            {{ aiMetrics.position_metrics?.distance_from_high?.toFixed(2) }}%
+          </span>
+        </div>
+      </div>
+      <!-- 识别形态 -->
+      <div v-if="aiMetrics.patterns?.volume_price_patterns?.length" class="patterns-section">
+        <span class="patterns-label">量价形态:</span>
+        <span v-for="p in aiMetrics.patterns.volume_price_patterns" :key="p" class="pattern-tag">{{ p }}</span>
+      </div>
+      <div v-if="aiMetrics.patterns?.kline_patterns?.length" class="patterns-section">
+        <span class="patterns-label">K线形态:</span>
+        <span v-for="p in aiMetrics.patterns.kline_patterns" :key="p" class="pattern-tag">{{ p }}</span>
+      </div>
+      <!-- 风险与建议 - 重点标红 -->
+      <div class="risk-action-box">
+        <div class="risk-item">
+          <span class="risk-label">风险等级</span>
+          <span :class="['risk-value', getRiskClass(aiSignals.risk_level)]">{{ aiSignals.risk_level }}</span>
+        </div>
+        <div class="action-item">
+          <span class="action-label">操作建议</span>
+          <span class="action-value">{{ aiSignals.action_suggestion }}</span>
+        </div>
+      </div>
+      <!-- 风险信号 -->
+      <div v-if="aiSignals.risk_signals?.length" class="signals-box risk-signals">
+        <div class="signals-title">⚠️ 风险信号</div>
+        <div v-for="s in aiSignals.risk_signals" :key="s.type" class="signal-item">
+          <span :class="['signal-severity', s.severity === '高' ? 'high' : s.severity === '中高' ? 'medium-high' : 'medium']">{{ s.severity }}</span>
+          <span class="signal-type">{{ s.type }}</span>
+          <span class="signal-desc">{{ s.description }}</span>
+        </div>
+      </div>
+      <!-- 机会信号 -->
+      <div v-if="aiSignals.opportunity_signals?.length" class="signals-box opportunity-signals">
+        <div class="signals-title">💡 机会信号</div>
+        <div v-for="s in aiSignals.opportunity_signals" :key="s.type" class="signal-item">
+          <span class="signal-severity opportunity">{{ s.severity }}</span>
+          <span class="signal-type">{{ s.type }}</span>
+          <span class="signal-desc">{{ s.description }}</span>
+        </div>
+      </div>
+    </div>
+    <!-- 详细分析报告(可折叠) -->
+    <details v-if="aiReport" class="analysis-details">
+      <summary>查看完整分析报告</summary>
+      <MarkdownRender :content="aiReport" />
+    </details>
   </Card>
   <Card title="实时行情" icon="chart" tone="default">
     <template #actions>
@@ -71,6 +157,8 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const aiLoading = ref(false);
 const aiReport = ref("");
+const aiMetrics = ref(null);
+const aiSignals = ref(null);
 const chartMode = ref("daily");
 const dailyDays = ref(260);
 const minutePeriod = ref(5);
@@ -97,6 +185,56 @@ function formatAmount(amt) {
   return amt.toString();
 }
 
+function formatChange(pct) {
+  if (!pct) return "0.00%";
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(2)}%`;
+}
+
+function getChangeClass(pct) {
+  if (!pct) return "";
+  if (pct > 0) return "is-up";
+  if (pct < 0) return "is-down";
+  return "";
+}
+
+function getVolumeRatioClass(ratio) {
+  if (!ratio) return "";
+  if (ratio > 2) return "is-high-volume";
+  if (ratio > 1.5) return "is-moderate-volume";
+  if (ratio < 0.7) return "is-low-volume";
+  return "";
+}
+
+function getTurnoverClass(rate) {
+  if (!rate) return "";
+  if (rate > 10) return "is-high-turnover";
+  if (rate > 5) return "is-moderate-turnover";
+  return "";
+}
+
+function getMaTrendClass(trend) {
+  if (!trend) return "";
+  if (trend === "多头排列") return "is-bullish";
+  if (trend === "空头排列") return "is-bearish";
+  return "";
+}
+
+function getDistanceClass(distance) {
+  if (!distance) return "";
+  if (distance > 5) return "is-near-high";
+  if (distance < -10) return "is-far-from-high";
+  return "";
+}
+
+function getRiskClass(level) {
+  if (!level) return "";
+  if (level === "高") return "is-high-risk";
+  if (level === "中高") return "is-medium-high-risk";
+  if (level === "中") return "is-medium-risk";
+  return "is-low-risk";
+}
+
 async function loadPositions() {
   positions.value = await apiGet("/api/positions");
   selectedName.value ||= positions.value[0]?.name || "";
@@ -119,6 +257,8 @@ async function onStockChange() {
   bars.value = [];
   quote.value = null;
   aiReport.value = "";
+  aiMetrics.value = null;
+  aiSignals.value = null;
   dailyDays.value = 260;
   await refreshChart();
 }
@@ -229,6 +369,9 @@ async function runAIAnalysis() {
     return;
   }
   aiLoading.value = true;
+  aiMetrics.value = null;
+  aiSignals.value = null;
+  aiReport.value = "";
   try {
     const context = {
       stock: selectedName.value,
@@ -236,6 +379,8 @@ async function runAIAnalysis() {
       quote: quote.value,
     };
     const result = await apiPost("/api/analysis/volume", context);
+    aiMetrics.value = result.metrics || null;
+    aiSignals.value = result.signals || null;
     aiReport.value = result.content || "";
     emit("toast", `AI量能分析完成 (${result.provider})`);
   } catch (err) {
@@ -341,5 +486,279 @@ onBeforeUnmount(stopMinuteTimer);
 
 .pnl-negative {
   color: var(--danger);
+}
+
+/* AI Analysis Summary Styles */
+.analysis-summary {
+  margin-bottom: 16px;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.stock-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.analysis-date {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: var(--table-header);
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Price changes */
+.is-up {
+  color: #dc2626;
+}
+
+.is-down {
+  color: #16a34a;
+}
+
+/* Volume ratio highlighting */
+.is-high-volume {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.is-moderate-volume {
+  color: #f59e0b;
+}
+
+.is-low-volume {
+  color: #6b7280;
+}
+
+/* Turnover highlighting */
+.is-high-turnover {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.is-moderate-turnover {
+  color: #f59e0b;
+}
+
+/* MA trend */
+.is-bullish {
+  color: #16a34a;
+}
+
+.is-bearish {
+  color: #dc2626;
+}
+
+/* Distance from high */
+.is-near-high {
+  color: #16a34a;
+}
+
+.is-far-from-high {
+  color: #dc2626;
+}
+
+/* Patterns section */
+.patterns-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.patterns-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pattern-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: var(--primary);
+  color: white;
+  border-radius: 4px;
+}
+
+/* Risk action box - 重点标红 */
+.risk-action-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+}
+
+.risk-item, .action-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.risk-label, .action-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.risk-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.is-high-risk {
+  color: #dc2626;
+}
+
+.is-medium-high-risk {
+  color: #f59e0b;
+}
+
+.is-medium-risk {
+  color: #6b7280;
+}
+
+.is-low-risk {
+  color: #16a34a;
+}
+
+.action-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Signals box */
+.signals-box {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.risk-signals {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.opportunity-signals {
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.15);
+}
+
+.signals-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.risk-signals .signals-title {
+  color: #dc2626;
+}
+
+.opportunity-signals .signals-title {
+  color: #16a34a;
+}
+
+.signal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.signal-severity {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.signal-severity.high {
+  background: #dc2626;
+  color: white;
+}
+
+.signal-severity.medium-high {
+  background: #f59e0b;
+  color: white;
+}
+
+.signal-severity.medium {
+  background: #6b7280;
+  color: white;
+}
+
+.signal-severity.opportunity {
+  background: #16a34a;
+  color: white;
+}
+
+.signal-type {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.signal-desc {
+  color: var(--muted);
+}
+
+/* Details section */
+.analysis-details {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.analysis-details summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.analysis-details summary:hover {
+  color: var(--primary);
+}
+
+.analysis-details[open] summary {
+  margin-bottom: 12px;
 }
 </style>
