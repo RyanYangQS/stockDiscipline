@@ -1,6 +1,7 @@
 <template>
   <Card title="持仓操作建议表" icon="holdings" tone="primary">
     <template #actions>
+      <a class="btn" href="/api/advice.csv">导出 CSV</a>
       <button class="btn primary" @click="rebuild">重新生成建议</button>
     </template>
     <div class="table-wrap">

@@ -18,9 +18,6 @@
           <h1>{{ active.label }}</h1>
           <p>{{ active.desc }}</p>
         </div>
-        <div class="head-actions">
-          <el-button tag="a" href="/api/advice.csv">导出建议 CSV</el-button>
-        </div>
       </header>
       <component :is="active.component" @toast="toast" />
     </el-main>
