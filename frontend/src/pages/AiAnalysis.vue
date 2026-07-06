@@ -1,23 +1,28 @@
 <template>
-  <section class="panel">
-    <div class="panel-head">
-      <div><h2>DeepSeek 每日分析</h2><p class="muted">{{ statusText }}</p></div>
+  <Card title="DeepSeek 每日分析" icon="ai" tone="primary">
+    <template #subtitle>{{ statusText }}</template>
+    <template #actions>
       <button class="btn primary" :disabled="loading" @click="runAnalysis">{{ loading ? "生成中..." : "生成今日 AI 日报" }}</button>
-    </div>
-    <label>补充说明<textarea v-model="extraNote" placeholder="补充今日盘面、重点板块或个人观察"></textarea></label>
-  </section>
-  <section class="panel">
-    <h2>分析报告历史</h2>
-    <article v-for="r in reports" :key="r.id" class="panel">
-      <div class="panel-head"><h3>{{ r.report_date }} · {{ r.provider }} · {{ r.status }}</h3><span class="tag">{{ r.model }}</span></div>
+    </template>
+    <form @submit.prevent>
+      <label>补充说明<textarea v-model="extraNote" placeholder="补充今日盘面、重点板块或个人观察"></textarea></label>
+    </form>
+  </Card>
+  <Card title="分析报告历史" icon="ai" tone="default">
+    <article v-for="r in reports" :key="r.id" class="card" style="margin-bottom: 15px; padding: 15px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+        <h3 style="margin: 0;">{{ r.report_date }} · {{ r.provider }} · {{ r.status }}</h3>
+        <span class="risk-tag" style="background: var(--primary);">{{ r.model }}</span>
+      </div>
       <div class="report">{{ r.content }}</div>
     </article>
-    <p v-if="!reports.length" class="muted">还没有报告。</p>
-  </section>
+    <p v-if="!reports.length" class="text-muted">还没有报告。</p>
+  </Card>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import Card from "../components/Card.vue";
 import { apiGet, apiPost } from "../services/api";
 
 const emit = defineEmits(["toast"]);
@@ -44,4 +49,3 @@ async function runAnalysis() {
 }
 onMounted(() => load().catch((err) => emit("toast", err.message)));
 </script>
-
