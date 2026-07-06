@@ -1,18 +1,21 @@
+"""FastAPI server for Stock Discipline."""
 from __future__ import annotations
 
 import csv
 import io
-import json
 import mimetypes
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from datetime import date
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from typing import Any
+
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DIR, FRONTEND_DIST_DIR
 from .data_sources import check_akshare_available, fetch_kline, fetch_realtime_quote
 from .db import init_db
-from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_cls_news, scrape_eastmoney_news, scrape_sina_finance
 from .repository import (
     create_daily_analysis,
     create_kline,
@@ -41,280 +44,303 @@ from .repository import (
     update_llm_config,
     update_position,
 )
+from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_cls_news, scrape_sina_finance
+
+# Initialize database
+init_db()
+seed_if_empty()
+rebuild_advice()
+
+# Create FastAPI app
+app = FastAPI(
+    title="Stock Discipline",
+    description="股票纪律管理系统 API",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def json_bytes(payload) -> bytes:
-    return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+# === Health & Summary ===
+
+@app.get("/api/health")
+async def health():
+    return {"ok": True, "app": "stock-discipline"}
 
 
-def build_advice_csv(rows: list[dict]) -> bytes:
+@app.get("/api/summary")
+async def summary():
+    return dashboard_summary()
+
+
+# === Positions ===
+
+@app.get("/api/positions")
+async def get_positions():
+    return list_positions()
+
+
+@app.post("/api/positions")
+async def post_position(data: dict[str, Any]):
+    return create_position(data)
+
+
+@app.put("/api/positions/{position_id}")
+async def put_position(position_id: int, data: dict[str, Any]):
+    return update_position(position_id, data)
+
+
+@app.delete("/api/positions/{position_id}")
+async def delete_position_route(position_id: int):
+    delete_position(position_id)
+    return {"deleted": True}
+
+
+# === News ===
+
+@app.get("/api/news")
+async def get_news():
+    return list_news()
+
+
+@app.post("/api/news")
+async def post_news(data: dict[str, Any]):
+    return create_news(data)
+
+
+@app.post("/api/news/scrape")
+async def scrape_news():
+    positions = list_positions()
+    news_items = scrape_all_holdings_news(positions)
+    saved = []
+    for item in news_items:
+        try:
+            saved.append(create_news(item))
+        except Exception:
+            pass
+    return {"scraped": len(news_items), "saved": len(saved)}
+
+
+@app.post("/api/news/scrape/market")
+async def scrape_market_news():
+    cls_news = scrape_cls_news(limit=15)
+    sina_news = scrape_sina_finance(limit=10)
+    all_news = cls_news + sina_news
+    saved = []
+    for item in all_news:
+        try:
+            saved.append(create_news(item))
+        except Exception:
+            pass
+    return {"scraped": len(all_news), "saved": len(saved)}
+
+
+# === Volume ===
+
+@app.get("/api/volume")
+async def get_volume():
+    return list_volume()
+
+
+@app.post("/api/volume")
+async def post_volume(data: dict[str, Any]):
+    return create_volume(data)
+
+
+# === Kline ===
+
+@app.get("/api/kline")
+async def get_kline(name: str = "", symbol: str = "", limit: int = 160):
+    return list_kline(name=name, symbol=symbol, limit=limit)
+
+
+@app.post("/api/kline")
+async def post_kline(data: dict[str, Any]):
+    return create_kline(data)
+
+
+@app.get("/api/kline/realtime")
+async def get_kline_realtime(name: str = "", symbol: str = "", days: int = 60):
+    return {"bars": fetch_kline(symbol, name, days)}
+
+
+# === Quote ===
+
+@app.get("/api/quote")
+async def get_quote(name: str = "", symbol: str = ""):
+    quote = fetch_realtime_quote(symbol or "", name)
+    return quote or {"error": "quote not found"}
+
+
+# === Market ===
+
+@app.get("/api/market")
+async def get_market():
+    return list_market_snapshots()
+
+
+@app.post("/api/market")
+async def post_market(data: dict[str, Any]):
+    return save_market_snapshot(data)
+
+
+# === Advice ===
+
+@app.get("/api/advice")
+async def get_advice():
+    return list_advice()
+
+
+@app.post("/api/advice/rebuild")
+async def rebuild_advice_route():
+    return rebuild_advice()
+
+
+@app.get("/api/advice.csv")
+async def get_advice_csv():
+    rows = list_advice()
     output = io.StringIO()
     headers = [
-        "标的",
-        "持仓数量",
-        "成本价",
-        "当前参考价",
-        "浮亏/浮盈比例",
-        "标的分类",
-        "减仓触发价（分批执行）",
-        "止损触发价（跌破刚性执行）",
-        "加仓参考价（仅企稳后）",
-        "操作建议",
-        "情景判断",
-        "纪律通过",
+        "标的", "持仓数量", "成本价", "当前参考价", "浮亏/浮盈比例",
+        "标的分类", "减仓触发价", "止损触发价", "加仓参考价",
+        "操作建议", "情景判断", "纪律通过"
     ]
     writer = csv.writer(output)
     writer.writerow(headers)
     for row in rows:
-        writer.writerow(
-            [
-                row["name"],
-                f"{row['quantity']}股",
-                f"{float(row['cost_price']):.2f}元",
-                f"{float(row['current_price']):.2f}元",
-                row.get("pnl_ratio_text") or f"{float(row['pnl_ratio']) * 100:+.1f}%",
-                row["category"],
-                row["trim_trigger"],
-                row["stop_trigger"],
-                row["add_reference"],
-                row["action_advice"],
-                row["scenario"],
-                "是" if int(row["discipline_passed"]) else "否",
-            ]
-        )
-    return output.getvalue().encode("utf-8-sig")
+        writer.writerow([
+            row["name"],
+            f"{row['quantity']}股",
+            f"{float(row['cost_price']):.2f}元",
+            f"{float(row['current_price']):.2f}元",
+            row.get("pnl_ratio_text") or f"{float(row['pnl_ratio']) * 100:+.1f}%",
+            row["category"],
+            row["trim_trigger"],
+            row["stop_trigger"],
+            row["add_reference"],
+            row["action_advice"],
+            row["scenario"],
+            "是" if int(row["discipline_passed"]) else "否",
+        ])
+    return Response(
+        content=output.getvalue().encode("utf-8-sig"),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=holding_advice.csv"}
+    )
 
 
-class ApiError(Exception):
-    def __init__(self, status: int, message: str):
-        self.status = status
-        self.message = message
-        super().__init__(message)
+# === Analysis ===
+
+@app.get("/api/analysis/reports")
+async def get_analysis_reports():
+    return list_analysis_reports()
 
 
-class Handler(BaseHTTPRequestHandler):
-    server_version = "StockDiscipline/1.0"
+@app.post("/api/analysis/daily")
+async def post_daily_analysis(data: dict[str, Any] = None):
+    return create_daily_analysis(data or {})
 
-    def do_OPTIONS(self):
-        self.send_response(HTTPStatus.NO_CONTENT)
-        self._cors_headers()
-        self.end_headers()
 
-    def do_GET(self):
-        self._handle("GET")
+# === Settings ===
 
-    def do_POST(self):
-        self._handle("POST")
+@app.get("/api/settings/deepseek")
+async def get_deepseek_settings():
+    return deepseek_status()
 
-    def do_PUT(self):
-        self._handle("PUT")
 
-    def do_DELETE(self):
-        self._handle("DELETE")
+# === LLM Config ===
 
-    def log_message(self, fmt, *args):
-        print(f"{self.address_string()} - {fmt % args}")
+@app.get("/api/llm/configs")
+async def get_llm_configs():
+    return list_llm_configs()
 
-    def _handle(self, method: str):
-        try:
-            parsed = urlparse(self.path)
-            if parsed.path.startswith("/api/"):
-                payload = self._route_api(method, parsed.path, parse_qs(parsed.query))
-                self._send_json(payload)
-                return
-            self._serve_static(parsed.path)
-        except ApiError as exc:
-            self._send_json({"error": exc.message}, status=exc.status)
-        except Exception as exc:
-            self._send_json({"error": str(exc)}, status=500)
 
-    def _route_api(self, method: str, path: str, query: dict):
-        if method == "GET" and path == "/api/health":
-            return {"ok": True, "app": "stock-discipline"}
-        if method == "GET" and path == "/api/summary":
-            return dashboard_summary()
-        if method == "GET" and path == "/api/positions":
-            return list_positions()
-        if method == "POST" and path == "/api/positions":
-            return create_position(self._read_json())
-        if path.startswith("/api/positions/"):
-            position_id = self._path_id(path, "/api/positions/")
-            if method == "PUT":
-                return update_position(position_id, self._read_json())
-            if method == "DELETE":
-                delete_position(position_id)
-                return {"deleted": True}
-        if method == "GET" and path == "/api/news":
-            return list_news()
-        if method == "POST" and path == "/api/news":
-            return create_news(self._read_json())
-        if method == "GET" and path == "/api/volume":
-            return list_volume()
-        if method == "POST" and path == "/api/volume":
-            return create_volume(self._read_json())
-        if method == "GET" and path == "/api/kline":
-            return list_kline(
-                name=query.get("name", [""])[0],
-                symbol=query.get("symbol", [""])[0],
-                limit=int(query.get("limit", ["160"])[0]),
-            )
-        if method == "POST" and path == "/api/kline":
-            return create_kline(self._read_json())
-        if method == "GET" and path == "/api/market":
-            return list_market_snapshots()
-        if method == "POST" and path == "/api/market":
-            return save_market_snapshot(self._read_json())
-        if method == "GET" and path == "/api/advice":
-            return list_advice()
-        if method == "POST" and path == "/api/advice/rebuild":
-            return rebuild_advice()
-        if method == "GET" and path == "/api/advice.csv":
-            self._send_csv(list_advice())
-            return None
-        if method == "GET" and path == "/api/analysis/reports":
-            return list_analysis_reports()
-        if method == "POST" and path == "/api/analysis/daily":
-            return create_daily_analysis(self._read_json())
-        if method == "GET" and path == "/api/settings/deepseek":
-            return deepseek_status()
-        if method == "GET" and path == "/api/llm/configs":
-            return list_llm_configs()
-        if method == "POST" and path == "/api/llm/configs":
-            return create_llm_config(self._read_json())
-        if path.startswith("/api/llm/config/"):
-            config_id = self._path_id(path, "/api/llm/config/")
-            if method == "GET":
-                return get_llm_config(config_id)
-            if method == "PUT":
-                return update_llm_config(config_id, self._read_json())
-            if method == "DELETE":
-                delete_llm_config(config_id)
-                return {"deleted": True}
-            if method == "POST" and path.endswith("/activate"):
-                return set_active_llm_config(config_id)
-            if method == "POST" and path.endswith("/test"):
-                return test_llm_config(config_id)
-        if method == "GET" and path == "/api/data/status":
-            return check_akshare_available()
-        if method == "GET" and path.startswith("/api/kline/realtime"):
-            # Parse symbol from path like /api/kline/realtime/300750
-            parts = path.split("/")
-            symbol = parts[-1] if len(parts) > 4 and parts[-1].isdigit() else query.get("symbol", [""])[0]
-            name = query.get("name", [""])[0]
-            days = int(query.get("days", ["60"])[0])
-            return {"bars": fetch_kline(symbol, name, days)}
-        if method == "GET" and path.startswith("/api/quote/"):
-            symbol = self._path_id(path, "/api/quote/") if path.split("/")[-1].isdigit() else ""
-            symbol = symbol or query.get("symbol", [""])[0]
-            name = query.get("name", [""])[0]
-            quote = fetch_realtime_quote(str(symbol), name)
-            return quote or {"error": "quote not found"}
-        if method == "GET" and path == "/api/scraper/status":
-            return check_scraper_available()
-        if method == "POST" and path == "/api/news/scrape":
-            # Scrape all holdings news
-            positions = list_positions()
-            news_items = scrape_all_holdings_news(positions)
-            saved = []
-            for item in news_items:
-                try:
-                    saved.append(create_news(item))
-                except Exception:
-                    pass
-            return {"scraped": len(news_items), "saved": len(saved)}
-        if method == "POST" and path == "/api/news/scrape/market":
-            # Scrape market-wide news only
-            cls_news = scrape_cls_news(limit=15)
-            sina_news = scrape_sina_finance(limit=10)
-            all_news = cls_news + sina_news
-            saved = []
-            for item in all_news:
-                try:
-                    saved.append(create_news(item))
-                except Exception:
-                    pass
-            return {"scraped": len(all_news), "saved": len(saved)}
-        raise ApiError(404, "api not found")
+@app.post("/api/llm/configs")
+async def post_llm_config(data: dict[str, Any]):
+    return create_llm_config(data)
 
-    def _path_id(self, path: str, prefix: str) -> int:
-        value = path.removeprefix(prefix).strip("/")
-        if not value.isdigit():
-            raise ApiError(400, "invalid id")
-        return int(value)
 
-    def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length", "0"))
-        if not length:
-            return {}
-        raw = self.rfile.read(length)
-        try:
-            return json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ApiError(400, f"invalid json: {exc}") from exc
+@app.get("/api/llm/config/{config_id}")
+async def get_llm_config_route(config_id: int):
+    return get_llm_config(config_id)
 
-    def _send_json(self, payload, status: int = 200):
-        if payload is None:
-            return
-        body = json_bytes(payload)
-        self.send_response(status)
-        self._cors_headers()
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
 
-    def _send_csv(self, rows: list[dict]):
-        body = build_advice_csv(rows)
-        self.send_response(200)
-        self._cors_headers()
-        self.send_header("Content-Type", "text/csv; charset=utf-8")
-        self.send_header("Content-Disposition", 'attachment; filename="holding_advice.csv"')
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+@app.put("/api/llm/config/{config_id}")
+async def put_llm_config(config_id: int, data: dict[str, Any]):
+    return update_llm_config(config_id, data)
 
-    def _serve_static(self, path: str):
-        if path == "/":
-            path = "/index.html"
-        clean = Path(path.lstrip("/"))
-        static_root = FRONTEND_DIST_DIR if FRONTEND_DIST_DIR.exists() else FRONTEND_DIR
-        target = (static_root / clean).resolve()
-        root = static_root.resolve()
-        if not str(target).startswith(str(root)) or not target.exists() or target.is_dir():
-            target = static_root / "index.html"
-        body = target.read_bytes()
-        content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-        if target.suffix == ".js":
-            content_type = "application/javascript"
-        if target.suffix == ".css":
-            content_type = "text/css"
-        self.send_response(200)
-        self._cors_headers()
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
 
-    def _cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+@app.delete("/api/llm/config/{config_id}")
+async def delete_llm_config_route(config_id: int):
+    delete_llm_config(config_id)
+    return {"deleted": True}
+
+
+@app.post("/api/llm/config/{config_id}/activate")
+async def activate_llm_config(config_id: int):
+    return set_active_llm_config(config_id)
+
+
+@app.post("/api/llm/config/{config_id}/test")
+async def test_llm_config_route(config_id: int):
+    return test_llm_config(config_id)
+
+
+# === Data Sources ===
+
+@app.get("/api/data/status")
+async def get_data_status():
+    return check_akshare_available()
+
+
+@app.get("/api/scraper/status")
+async def get_scraper_status():
+    return check_scraper_available()
+
+
+# === Static Files ===
+
+static_root = FRONTEND_DIST_DIR if FRONTEND_DIST_DIR.exists() else FRONTEND_DIR
+
+@app.get("/")
+async def index():
+    index_file = static_root / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    raise HTTPException(404, "index.html not found")
+
+
+# Mount static files
+app.mount("/assets", StaticFiles(directory=static_root / "assets", check_dir=False), name="assets")
+app.mount("/", StaticFiles(directory=static_root, html=True, check_dir=False), name="static")
 
 
 def run(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
+    """Run FastAPI server with uvicorn."""
+    import uvicorn
     import socket
-
-    init_db()
-    seed_if_empty()
-    rebuild_advice()
 
     # Try default port, then find available port if blocked
     max_attempts = 10
     for attempt in range(max_attempts):
         try:
-            server = ThreadingHTTPServer((host, port), Handler)
+            # Test if port is available
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind((host, port))
+            sock.close()
+
             print(f"Stock Discipline running at http://{host}:{port}")
-            server.serve_forever()
+            print(f"API Documentation: http://{host}:{port}/docs")
+            uvicorn.run(app, host=host, port=port)
             return
         except OSError as e:
             if e.errno == 48:  # Address already in use
@@ -324,5 +350,4 @@ def run(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
             else:
                 raise
 
-    print(f"Could not find available port after {max_attempts} attempts")
     raise OSError(f"No available ports in range {DEFAULT_PORT}-{DEFAULT_PORT + max_attempts}")
