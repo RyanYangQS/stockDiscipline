@@ -262,7 +262,8 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 <style scoped>
 /* Table styles */
 .table-wrap {
-  max-height: 500px;
+  max-height: calc(100vh - 280px);
+  min-height: 300px;
   overflow-x: auto;
   overflow-y: auto;
   border-radius: 8px;
@@ -277,9 +278,10 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 
 .holdings-table th,
 .holdings-table td {
-  padding: 10px 12px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
-  vertical-align: top;
+  vertical-align: middle;
+  text-align: left;
 }
 
 .holdings-table th {
@@ -291,6 +293,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   top: 0;
   z-index: 1;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .holdings-table tbody tr:hover {
@@ -298,16 +301,16 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 }
 
 /* Column widths */
-.col-name { min-width: 100px; max-width: 120px; }
-.col-qty { min-width: 70px; }
-.col-cost, .col-price { min-width: 80px; }
-.col-pnl { min-width: 70px; font-weight: 600; }
-.col-cat { min-width: 90px; }
+.col-name { min-width: 110px; white-space: nowrap; }
+.col-qty { min-width: 70px; white-space: nowrap; }
+.col-cost, .col-price { min-width: 80px; white-space: nowrap; }
+.col-pnl { min-width: 70px; white-space: nowrap; }
+.col-cat { min-width: 90px; white-space: nowrap; }
 .col-scenario { min-width: 120px; }
-.col-trigger { min-width: 140px; white-space: normal; line-height: 1.4; }
-.col-add { min-width: 120px; white-space: normal; line-height: 1.4; }
-.col-advice { min-width: 200px; max-width: 280px; white-space: normal; }
-.col-action { min-width: 80px; width: 100px; text-align: center; }
+.col-trigger { min-width: 160px; white-space: normal; }
+.col-add { min-width: 140px; white-space: normal; }
+.col-advice { min-width: 220px; max-width: 300px; white-space: normal; }
+.col-action { min-width: 100px; white-space: nowrap; }
 
 /* PnL colors */
 .pnl-positive { color: #dc2626; }
@@ -321,6 +324,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   font-size: 10px;
   font-weight: 600;
   margin-left: 4px;
+  vertical-align: middle;
 }
 .provider-tag.deepseek {
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -339,13 +343,14 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
   background: rgba(139, 92, 246, 0.1) !important;
 }
 
-/* Category tags */
+/* Category tags - no wrap */
 .category-tag {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
 .category-tag.core {
   background: #dbeafe;
@@ -368,7 +373,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 /* Risk tags */
 .risk-tag {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
@@ -401,7 +406,7 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 /* Action buttons */
 .action-buttons { display: flex; gap: 12px; justify-content: center; }
 .btn-text {
-  padding: 2px 0;
+  padding: 4px 0;
   font-size: 13px;
   color: var(--primary);
   cursor: pointer;
