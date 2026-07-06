@@ -1,25 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 停止所有服务
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PID_FILE="$ROOT_DIR/stock-discipline.pid"
 
-echo "正在停止服务..."
-
-# 读取PID并停止
-if [ -f "logs/backend.pid" ]; then
-    BACKEND_PID=$(cat logs/backend.pid)
-    kill $BACKEND_PID 2>/dev/null && echo "✅ 后端服务已停止"
-    rm -f logs/backend.pid
+if [[ ! -f "$PID_FILE" ]]; then
+  echo "No pid file found."
+  exit 0
 fi
 
-if [ -f "logs/frontend.pid" ]; then
-    FRONTEND_PID=$(cat logs/frontend.pid)
-    kill $FRONTEND_PID 2>/dev/null && echo "✅ 前端服务已停止"
-    rm -f logs/frontend.pid
+PID="$(cat "$PID_FILE")"
+if kill -0 "$PID" 2>/dev/null; then
+  kill "$PID"
+  echo "Stopped Stock Discipline pid $PID"
+else
+  echo "Process $PID is not running."
 fi
+rm -f "$PID_FILE"
 
-# 强制清理残留进程
-pkill -f "uvicorn app.main:app" 2>/dev/null
-pkill -f "vite.*port=3000" 2>/dev/null
-
-echo ""
-echo "✅ 所有服务已停止"

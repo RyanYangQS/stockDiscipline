@@ -1,34 +1,3 @@
-# 镇金仓 - 后端依赖
+# No third-party runtime dependencies are required.
+# Python 3.10+ is enough because the backend uses http.server and sqlite3.
 
-# Web框架
-fastapi>=0.109
-uvicorn[standard]>=0.27
-python-multipart>=0.0.9
-
-# 数据库
-sqlalchemy>=2.0
-alembic>=1.13
-aiosqlite>=0.19
-greenlet>=3.0  # SQLAlchemy异步支持
-
-# 数据处理(支持Python 3.13)
-pandas>=2.2
-numpy>=2.0  # 支持Python 3.13
-
-# 股票数据API
-pytdx>=1.72  # 通达信数据接口
-akshare>=1.18  # 保留作为备用
-
-# 数据验证
-pydantic>=2.6
-pydantic-settings>=2.1
-
-# 工具库
-python-dotenv>=1.0
-loguru>=0.7
-httpx>=0.26
-redis>=5.0
-
-# 测试
-pytest>=8.0
-pytest-asyncio>=0.23

@@ -1,3 +1,2 @@
-"""
-App模块
-"""
+"""Stock discipline web system."""
+

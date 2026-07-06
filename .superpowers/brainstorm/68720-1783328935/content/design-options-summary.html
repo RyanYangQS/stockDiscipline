@@ -1,0 +1,170 @@
+<h2>三种UI改进方案总览</h2>
+<p class="subtitle">请选择最适合您使用习惯的设计风格</p>
+
+<div class="cards">
+  <div class="card" data-choice="方案A" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc;border-radius:12px;">
+      <div style="display:flex;min-height:200px;">
+        <div style="width:60px;background:#1e293b;color:#fff;padding:10px;border-radius:8px 0 0 8px;">
+          <div style="font-size:12px;margin-bottom:8px;">📊</div>
+          <div style="font-size:10px;padding:4px;background:rgba(23,107,135,.3);border-radius:4px;margin-bottom:4px;">总览</div>
+          <div style="font-size:10px;padding:4px;margin-bottom:4px;">持仓</div>
+        </div>
+        <div style="flex:1;padding:10px;background:#fff;border-radius:0 8px 8px 0;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+            <div style="padding:8px;background:#fff;border-radius:6px;border-left:2px solid #176b87;font-size:10px;">
+              <div style="font-size:8px;color:#64748b;">持仓</div>
+              <div style="font-size:12px;font-weight:700;">5</div>
+            </div>
+            <div style="padding:8px;background:#fff;border-radius:6px;border-left:2px solid #067647;font-size:10px;">
+              <div style="font-size:8px;color:#64748b;">市值</div>
+              <div style="font-size:12px;font-weight:700;">¥52K</div>
+            </div>
+            <div style="padding:8px;background:#fff;border-radius:6px;border-left:2px solid #b42318;font-size:10px;">
+              <div style="font-size:8px;color:#64748b;">盈亏</div>
+              <div style="font-size:12px;font-weight:700;color:#b42318;">-¥2K</div>
+            </div>
+          </div>
+          <div style="padding:8px;background:#fff;border-radius:6px;font-size:10px;border:1px solid #e2e8f0;">
+            <div style="font-size:10px;font-weight:600;margin-bottom:4px;">风险优先级</div>
+            <div style="padding:4px;background:#fef3f2;border-radius:4px;font-size:9px;">
+              <span style="padding:1px 3px;background:#b42318;color:#fff;border-radius:3px;font-size:8px;">高风险</span>
+              宁德时代
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案A: 简洁现代风格</h3>
+      <p style="font-size:14px;margin:8px 0;color:#4a5568;">保持简洁清爽,增加图标和更好的视觉层次</p>
+      <div style="font-size:13px;color:#2d3748;margin-top:10px;">
+        <strong>特点:</strong>
+        <ul style="margin:5px 0;padding-left:20px;line-height:1.6;">
+          <li>侧边栏添加图标引导</li>
+          <li>指标布局3+2列,层次清晰</li>
+          <li>关键数据用色块突出</li>
+          <li>整体清爽简洁</li>
+        </ul>
+      </div>
+      <div style="margin-top:10px;padding:8px;background:#ecfdf5;border-radius:8px;font-size:13px;">
+        <strong style="color:#067647;">适合:</strong> 快速浏览和决策,日常使用
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="方案B" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#0f172a;border-radius:12px;">
+      <div style="display:flex;min-height:200px;">
+        <div style="width:60px;background:#1e293b;color:#fff;padding:10px;border-radius:8px 0 0 8px;border-right:1px solid #334155;">
+          <div style="font-size:10px;padding:4px 0;border-bottom:1px solid #334155;margin-bottom:6px;">📊 STOCK</div>
+          <div style="font-size:10px;padding:4px;background:#176b87;border-radius:4px;margin-bottom:4px;">总览</div>
+          <div style="font-size:10px;padding:4px;margin-bottom:4px;">持仓</div>
+        </div>
+        <div style="flex:1;padding:10px;background:#1e293b;border-radius:0 8px 8px 0;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">
+            <div style="padding:6px;background:#334155;border-radius:6px;font-size:10px;border:1px solid #475569;">
+              <div style="font-size:8px;color:#64748b;">持仓 POS</div>
+              <div style="font-size:11px;font-weight:700;color:#fff;">5</div>
+            </div>
+            <div style="padding:6px;background:#334155;border-radius:6px;font-size:10px;border:1px solid #475569;">
+              <div style="font-size:8px;color:#64748b;">市值 VAL</div>
+              <div style="font-size:11px;font-weight:700;color:#067647;">¥52K</div>
+            </div>
+            <div style="padding:6px;background:#334155;border-radius:6px;font-size:10px;border:1px solid #dc2626;">
+              <div style="font-size:8px;color:#64748b;">盈亏 P/L</div>
+              <div style="font-size:11px;font-weight:700;color:#b42318;">-¥2K</div>
+            </div>
+            <div style="padding:6px;background:#334155;border-radius:6px;font-size:10px;border:1px solid #475569;">
+              <div style="font-size:8px;color:#64748b;">比率</div>
+              <div style="font-size:11px;font-weight:700;color:#b42318;">-4%</div>
+            </div>
+          </div>
+          <div style="padding:8px;background:#334155;border-radius:6px;font-size:10px;border:1px solid #475569;">
+            <div style="font-size:10px;font-weight:600;color:#fff;margin-bottom:4px;border-bottom:1px solid #475569;padding-bottom:4px;">⚠️ 风险优先级</div>
+            <table style="width:100%;font-size:9px;color:#cbd5e1;">
+              <tr style="border-bottom:1px solid #475569;">
+                <td style="padding:3px;">宁德时代</td>
+                <td style="padding:3px;"><span style="padding:1px 3px;background:#b42318;border-radius:3px;font-size:8px;">HIGH</span></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案B: 专业金融风格</h3>
+      <p style="font-size:14px;margin:8px 0;color:#4a5568;">数据密集型设计,类似专业金融软件</p>
+      <div style="font-size:13px;color:#2d3748;margin-top:10px;">
+        <strong>特点:</strong>
+        <ul style="margin:5px 0;padding-left:20px;line-height:1.6;">
+          <li>深色主题专业感强</li>
+          <li>数据密集信息完整</li>
+          <li>分组清晰的侧边栏</li>
+          <li>表格化呈现便于对比</li>
+        </ul>
+      </div>
+      <div style="margin-top:10px;padding:8px;background:#f7fafc;border-radius:8px;font-size:13px;border:1px solid #2d3748;">
+        <strong style="color:#1e293b;">适合:</strong> 深度分析和长时间使用
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="方案C" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#fafbfc;border-radius:12px;">
+      <div style="display:flex;min-height:200px;">
+        <div style="width:60px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:10px;border-radius:8px 0 0 8px;">
+          <div style="width:28px;height:28px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:8px;">📊</div>
+          <div style="font-size:10px;padding:4px;background:rgba(255,255,255,.25);border-radius:6px;margin-bottom:4px;">总览</div>
+          <div style="font-size:10px;padding:4px;margin-bottom:4px;">持仓</div>
+        </div>
+        <div style="flex:1;padding:10px;background:#fff;border-radius:0 8px 8px 0;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div style="padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:10px;color:#fff;font-size:10px;">
+              <div style="font-size:8px;opacity:.9;">持仓数量</div>
+              <div style="font-size:14px;font-weight:700;">5</div>
+            </div>
+            <div style="padding:10px;background:linear-gradient(135deg,#067647,#059669);border-radius:10px;color:#fff;font-size:10px;">
+              <div style="font-size:8px;opacity:.9;">当前市值</div>
+              <div style="font-size:14px;font-weight:700;">¥52K</div>
+            </div>
+          </div>
+          <div style="padding:10px;background:linear-gradient(135deg,#b42318,#dc2626);border-radius:10px;color:#fff;font-size:10px;">
+            <div style="font-size:8px;opacity:.9;">总盈亏</div>
+            <div style="font-size:14px;font-weight:700;">-¥2,180 (-4%)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案C: 卡片化设计</h3>
+      <p style="font-size:14px;margin:8px 0;color:#4a5568;">现代化卡片布局,强调数据可视化</p>
+      <div style="font-size:13px;color:#2d3748;margin-top:10px;">
+        <strong>特点:</strong>
+        <ul style="margin:5px 0;padding-left:20px;line-height:1.6;">
+          <li>渐变色卡片视觉强</li>
+          <li>圆角阴影现代感</li>
+          <li>数据可视化丰富</li>
+          <li>侧边栏渐变品牌感</li>
+        </ul>
+      </div>
+      <div style="margin-top:10px;padding:8px;background:#f3e8ff;border-radius:8px;font-size:13px;">
+        <strong style="color:#667eea;">适合:</strong> 现代化审美和年轻用户
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:25px;padding:20px;background:#f7fafc;border-radius:12px;border:1px solid #e2e8f0;">
+  <h3 style="margin:0 0 15px 0;font-size:16px;color:#2d3748;">💡 推荐建议</h3>
+  <div style="font-size:14px;line-height:1.8;color:#4a5568;">
+    基于股票纪律系统的定位,我推荐<strong style="color:#176b87;">方案A(简洁现代)</strong>作为基础方案,因为它:
+    <ul style="margin:10px 0;padding-left:20px;">
+      <li>保持了金融软件的专业性和清晰度</li>
+      <li>视觉层次好,适合快速决策场景</li>
+      <li>实现难度适中,易于后续优化</li>
+      <li>可以根据需要融入方案B的数据密集特性或方案C的视觉元素</li>
+    </ul>
+    <p style="margin-top:10px;">您也可以点击选择其他方案,或提出混合需求的想法。</p>
+  </div>
+</div>

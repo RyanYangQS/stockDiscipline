@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+stock-discipline.pid
+stock-discipline.log
+frontend-vite.pid
+frontend-vite.log
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,97 @@
+<h2>当前UI问题分析与改进方向</h2>
+<p class="subtitle">通过对比找出布局和视觉设计的核心问题</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前设计问题</div>
+    <div class="mockup-body">
+      <div class="mock-sidebar" style="width:180px;background:#111827;color:#fff;padding:15px;font-size:13px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:20px;">Stock Discipline</div>
+        <div style="padding:8px;background:rgba(255,255,255,.12);margin-bottom:4px;border-radius:4px;">总览</div>
+        <div style="padding:8px;margin-bottom:4px;">持仓建议</div>
+        <div style="padding:8px;margin-bottom:4px;">K线量能</div>
+        <div style="padding:8px;margin-bottom:4px;">消息面</div>
+        <div style="padding:8px;margin-bottom:4px;">AI日报</div>
+        <div style="padding:8px;">设置</div>
+      </div>
+      <div class="mock-content" style="margin-left:180px;padding:20px;background:#f4f6f8;">
+        <div style="margin-bottom:15px;">
+          <h3 style="margin:0;font-size:24px;">总览</h3>
+          <p style="margin:5px 0 0;color:#667085;font-size:13px;">持仓、量能、消息面、AI日报和纪律风险总控</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:15px;">
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">持仓数量</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;">5</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">当前市值</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;">52,340元</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">总盈亏</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;color:#b42318;">-2,180元</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">总盈亏率</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;color:#b42318;">-4.0%</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">高风险</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;color:#b42318;">2</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid #d7dee8;border-radius:6px;">
+            <div style="font-size:12px;color:#667085;">纪律拦截</div>
+            <div style="font-size:18px;margin-top:4px;font-weight:700;color:#b42318;">1</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #d7dee8;border-radius:6px;padding:15px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;font-size:16px;">风险优先级</h3>
+            <button style="padding:6px 12px;border:1px solid #d7dee8;border-radius:4px;background:#fff;">刷新</button>
+          </div>
+          <div style="font-size:13px;line-height:1.6;">
+            <div style="margin-bottom:8px;">
+              <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:#fef3f2;color:#b42318;font-size:12px;">高风险</span>
+              <strong>宁德时代</strong>：恐慌性下跌观察，建议减仓20%
+            </div>
+            <div style="margin-bottom:8px;">
+              <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:#fffaeb;color:#b54708;font-size:12px;">中风险</span>
+              <strong>比亚迪</strong>：主力洗盘观察，持仓观望
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改进方向建议</div>
+    <div class="mockup-body">
+      <div style="padding:15px;background:#fff;border-radius:8px;">
+        <h3 style="margin:0 0 12px 0;font-size:16px;color:#176b87;">核心问题</h3>
+        <ul style="margin:0;padding-left:20px;line-height:1.8;font-size:14px;">
+          <li>侧边栏单调,缺乏图标和视觉引导</li>
+          <li>指标卡片过于密集,6列布局拥挤</li>
+          <li>信息缺乏视觉层次和重点突出</li>
+          <li>表格设计不够清晰,信息密度高</li>
+          <li>整体缺乏品牌感和现代感</li>
+        </ul>
+      </div>
+      <div style="margin-top:15px;padding:15px;background:#ecfdf3;border-radius:8px;">
+        <h3 style="margin:0 0 12px 0;font-size:16px;color:#067647;">改进重点</h3>
+        <ul style="margin:0;padding-left:20px;line-height:1.8;font-size:14px;">
+          <li><strong>侧边栏优化</strong>:添加图标、分组、更好视觉层次</li>
+          <li><strong>指标展示</strong>:调整布局,突出关键指标</li>
+          <li><strong>表格改进</strong>:优化列宽、对齐、视觉引导</li>
+          <li><strong>色彩体系</strong>:建立清晰的色彩层次</li>
+          <li><strong>整体风格</strong>:更现代、专业的金融界面</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:20px;padding:15px;background:#f8fafc;border-radius:8px;font-size:14px;">
+  <strong>下一步:</strong>我将展示3种不同的UI改进方案,您可以选择最符合预期的方向。
+</p>

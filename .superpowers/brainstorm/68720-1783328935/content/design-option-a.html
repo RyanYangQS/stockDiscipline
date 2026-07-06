@@ -1,0 +1,132 @@
+<h2>三种UI改进方案对比</h2>
+<p class="subtitle">选择最适合您使用习惯的设计风格</p>
+
+<div class="options">
+  <div class="option" data-choice="方案A" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>简洁现代风格</h3>
+      <p>保持简洁清爽,增加图标和更好的视觉层次,适合快速浏览和操作</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="方案B" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>专业金融风格</h3>
+      <p>数据密集型设计,类似专业金融软件,强调信息完整性和专业感</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="方案C" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>卡片化设计</h3>
+      <p>现代化卡片布局,强调数据可视化和交互性,视觉上更吸引人</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">方案A: 简洁现代风格</div>
+  <div class="mockup-body">
+    <div style="display:flex;min-height:400px;background:#f8fafc;">
+      <div style="width:200px;background:#1e293b;color:#fff;padding:20px 0;">
+        <div style="padding:0 20px 20px;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px;">
+          <span style="width:32px;height:32px;background:#176b87;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📊</span>
+          Stock Discipline
+        </div>
+        <div style="padding:8px 20px;background:rgba(23,107,135,.3);border-radius:8px 0 0 8px;display:flex;align-items:center;gap:12px;font-size:14px;">
+          <span style="font-size:18px;">📊</span> 总览
+        </div>
+        <div style="padding:8px 20px;display:flex;align-items:center;gap:12px;font-size:14px;color:#94a3b8;">
+          <span style="font-size:18px;">💼</span> 持仓建议
+        </div>
+        <div style="padding:8px 20px;display:flex;align-items:center;gap:12px;font-size:14px;color:#94a3b8;">
+          <span style="font-size:18px;">📈</span> K线量能
+        </div>
+        <div style="padding:8px 20px;display:flex;align-items:center;gap:12px;font-size:14px;color:#94a3b8;">
+          <span style="font-size:18px;">📰</span> 消息面
+        </div>
+        <div style="padding:8px 20px;display:flex;align-items:center;gap:12px;font-size:14px;color:#94a3b8;">
+          <span style="font-size:18px;">🤖</span> AI日报
+        </div>
+        <div style="padding:8px 20px;margin-top:20px;display:flex;align-items:center;gap:12px;font-size:14px;color:#94a3b8;">
+          <span style="font-size:18px;">⚙️</span> 设置
+        </div>
+      </div>
+      <div style="flex:1;padding:25px;">
+        <div style="margin-bottom:20px;">
+          <h2 style="margin:0;font-size:24px;color:#1e293b;">总览</h2>
+          <p style="margin:5px 0;color:#64748b;font-size:14px;">持仓、量能、消息面、AI日报和纪律风险总控</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px;">
+          <div style="padding:18px;background:#fff;border-radius:12px;border-left:4px solid #176b87;">
+            <div style="font-size:13px;color:#64748b;margin-bottom:8px;">持仓数量</div>
+            <div style="font-size:28px;font-weight:700;color:#1e293b;">5</div>
+          </div>
+          <div style="padding:18px;background:#fff;border-radius:12px;border-left:4px solid #067647;">
+            <div style="font-size:13px;color:#64748b;margin-bottom:8px;">当前市值</div>
+            <div style="font-size:28px;font-weight:700;color:#1e293b;">¥52,340</div>
+          </div>
+          <div style="padding:18px;background:#fff;border-radius:12px;border-left:4px solid #b42318;">
+            <div style="font-size:13px;color:#64748b;margin-bottom:8px;">总盈亏</div>
+            <div style="font-size:28px;font-weight:700;color:#b42318;">-¥2,180</div>
+            <div style="font-size:13px;color:#b42318;margin-top:5px;">-4.0%</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin-bottom:20px;">
+          <div style="padding:18px;background:#fef3f2;border-radius:12px;border:1px solid #fee2e2;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span style="width:36px;height:36px;background:#b42318;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">⚠️</span>
+              <h3 style="margin:0;font-size:16px;color:#b42318;">高风险</h3>
+            </div>
+            <div style="font-size:24px;font-weight:700;color:#b42318;">2</div>
+          </div>
+          <div style="padding:18px;background:#fffaeb;border-radius:12px;border:1px solid #fef3c7;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span style="width:36px;height:36px;background:#b54708;color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">🚫</span>
+              <h3 style="margin:0;font-size:16px;color:#b54708;">纪律拦截</h3>
+            </div>
+            <div style="font-size:24px;font-weight:700;color:#b54708;">1</div>
+          </div>
+        </div>
+        <div style="padding:20px;background:#fff;border-radius:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3 style="margin:0;font-size:16px;">风险优先级</h3>
+            <button style="padding:8px 16px;background:#176b87;color:#fff;border:none;border-radius:8px;font-size:14px;">刷新</button>
+          </div>
+          <div style="line-height:1.8;">
+            <div style="padding:10px;background:#fef3f2;border-radius:8px;margin-bottom:10px;">
+              <span style="display:inline-block;padding:4px 10px;background:#b42318;color:#fff;border-radius:6px;font-size:12px;">高风险</span>
+              <strong style="color:#1e293b;margin-left:10px;">宁德时代</strong>：恐慌性下跌观察，建议减仓20%
+            </div>
+            <div style="padding:10px;background:#fffaeb;border-radius:8px;">
+              <span style="display:inline-block;padding:4px 10px;background:#b54708;color:#fff;border-radius:6px;font-size:12px;">中风险</span>
+              <strong style="color:#1e293b;margin-left:10px;">比亚迪</strong>：主力洗盘观察，持仓观望
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>优点</h4>
+    <ul>
+      <li>侧边栏添加图标,视觉引导清晰</li>
+      <li>指标布局改为3+2列,信息层次更好</li>
+      <li>关键数据用色块突出,一目了然</li>
+      <li>整体清爽简洁,适合快速决策</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>缺点</h4>
+    <ul>
+      <li>信息密度降低,可能需要更多页面浏览</li>
+      <li>适合轻度使用,不适合深度分析</li>
+    </ul>
+  </div>
+</div>
