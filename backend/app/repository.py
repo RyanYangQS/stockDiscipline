@@ -415,15 +415,14 @@ def rebuild_advice() -> list[dict[str, Any]]:
     today = date.today().isoformat()
     output: list[dict[str, Any]] = []
     with connect() as conn:
-        conn.execute("DELETE FROM advice_records WHERE advice_date = ?", (today,))
         for position in positions:
             advice = build_advice(position, latest_context(position))
             conn.execute(
                 """
-                INSERT INTO advice_records
+                INSERT OR REPLACE INTO advice_records
                 (position_id, advice_date, pnl_ratio, risk_level, scenario, trim_trigger,
-                 stop_trigger, add_reference, action_advice, reason, discipline_passed, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 stop_trigger, add_reference, action_advice, reason, discipline_passed, provider, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     advice["position_id"],
@@ -437,10 +436,11 @@ def rebuild_advice() -> list[dict[str, Any]]:
                     advice["action_advice"],
                     advice["reason"],
                     advice["discipline_passed"],
+                    "local",
                     utc_now(),
                 ),
             )
-            output.append({**position, **advice})
+            output.append({**position, **advice, "provider": "local"})
     return output
 
 
@@ -450,7 +450,7 @@ def list_advice() -> list[dict[str, Any]]:
             """
             SELECT p.id as position_id, p.symbol, p.name, p.quantity, p.cost_price, p.current_price, p.category, p.sector, p.note,
                    a.advice_date, a.pnl_ratio, a.risk_level, a.scenario, a.trim_trigger,
-                   a.stop_trigger, a.add_reference, a.action_advice, a.reason, a.discipline_passed
+                   a.stop_trigger, a.add_reference, a.action_advice, a.reason, a.discipline_passed, a.provider
             FROM advice_records a
             JOIN positions p ON p.id = a.position_id
             WHERE a.advice_date = (SELECT MAX(advice_date) FROM advice_records)

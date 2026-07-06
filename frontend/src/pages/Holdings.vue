@@ -25,20 +25,29 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in advice" :key="row.position_id">
+          <tr v-for="row in advice" :key="row.position_id" :class="{ 'ai-advice': row.provider === 'deepseek' }">
             <td class="col-name">
               <strong>{{ row.name }}</strong>
               <br><span class="text-muted small">{{ row.symbol || '-' }}</span>
+              <span v-if="row.provider" class="provider-tag" :class="row.provider">{{ row.provider === 'deepseek' ? 'AI' : '本地' }}</span>
             </td>
             <td class="col-qty">{{ row.quantity }}股</td>
             <td class="col-cost">{{ money(row.cost_price) }}元</td>
             <td class="col-price">{{ money(row.current_price) }}元</td>
             <td class="col-pnl" :class="pnlClass(row.pnl_ratio)">{{ row.pnl_ratio_text || pct(row.pnl_ratio) }}</td>
-            <td class="col-cat">{{ row.category }}</td>
+            <td class="col-cat">
+              <span class="category-tag" :class="categoryClass(row.category)">{{ row.category }}</span>
+            </td>
             <td class="col-scenario"><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
-            <td class="col-trigger">{{ row.trim_trigger }}</td>
-            <td class="col-trigger">{{ row.stop_trigger }}</td>
-            <td class="col-add">{{ row.add_reference }}</td>
+            <td class="col-trigger">
+              <span class="trigger-text">{{ highlightTrigger(row.trim_trigger, '减仓') }}</span>
+            </td>
+            <td class="col-trigger">
+              <span class="trigger-text danger">{{ highlightTrigger(row.stop_trigger, '止损') }}</span>
+            </td>
+            <td class="col-add">
+              <span class="add-text">{{ row.add_reference }}</span>
+            </td>
             <td class="col-advice">
               <div class="advice-content">
                 <span class="advice-action">{{ row.action_advice }}</span>
@@ -113,6 +122,21 @@ function pnlClass(ratio) {
   if (ratio > 0) return 'pnl-positive';
   if (ratio < 0) return 'pnl-negative';
   return '';
+}
+
+function categoryClass(category) {
+  if (category === '核心赛道') return 'core';
+  if (category === '弱势跟风') return 'weak';
+  if (category === '高风险票') return 'danger';
+  if (category === '观察仓') return 'observe';
+  return '';
+}
+
+function highlightTrigger(text, keyword) {
+  if (!text) return '';
+  // Add visual emphasis by keeping original text
+  // CSS will handle the highlighting
+  return text;
 }
 
 const emit = defineEmits(["toast"]);
@@ -289,6 +313,58 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 .pnl-positive { color: #dc2626; }
 .pnl-negative { color: #16a34a; }
 
+/* Provider tag */
+.provider-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.provider-tag.deepseek {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+.provider-tag.local {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+/* AI advice row highlight */
+.ai-advice {
+  background: rgba(139, 92, 246, 0.05) !important;
+}
+.ai-advice:hover {
+  background: rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Category tags */
+.category-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.category-tag.core {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.category-tag.observe {
+  background: #fef3c7;
+  color: #d97706;
+}
+.category-tag.weak {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.category-tag.danger {
+  background: #fecaca;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 /* Risk tags */
 .risk-tag {
   display: inline-block;
@@ -301,6 +377,21 @@ onMounted(() => load().catch((err) => emit("toast", err.message)));
 .risk-tag.is-medium-high { background: #fef3c7; color: #d97706; }
 .risk-tag.is-medium { background: #e5e7eb; color: #6b7280; }
 .risk-tag.is-low { background: #d1fae5; color: #059669; }
+
+/* Trigger text highlighting */
+.trigger-text {
+  line-height: 1.5;
+}
+.trigger-text.danger {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* Add text styling */
+.add-text {
+  color: var(--ink);
+  line-height: 1.4;
+}
 
 /* Advice content */
 .advice-content { display: flex; flex-direction: column; gap: 4px; }

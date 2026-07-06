@@ -381,7 +381,9 @@ async def generate_ai_advice():
     if not positions:
         return {"advice": [], "message": "无持仓数据"}
 
+    today = date.today().isoformat()
     results = []
+
     for position in positions:
         try:
             # Get context (news, volume)
@@ -397,18 +399,18 @@ async def generate_ai_advice():
             # Call AI for position analysis
             advice = call_deepseek_for_position(position, context, kline_summary)
 
-            # Save to database
+            # Save to database (INSERT OR REPLACE to update existing)
             with connect() as conn:
                 conn.execute(
                     """
-                    INSERT INTO advice_records
+                    INSERT OR REPLACE INTO advice_records
                     (position_id, advice_date, pnl_ratio, risk_level, scenario, trim_trigger,
-                     stop_trigger, add_reference, action_advice, reason, discipline_passed, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     stop_trigger, add_reference, action_advice, reason, discipline_passed, provider, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         advice.get("position_id", position["id"]),
-                        advice.get("advice_date", date.today().isoformat()),
+                        today,
                         advice.get("pnl_ratio", 0),
                         advice.get("risk_level", "中"),
                         advice.get("scenario", "观察"),
@@ -418,6 +420,7 @@ async def generate_ai_advice():
                         advice.get("action_advice", ""),
                         advice.get("reason", ""),
                         int(advice.get("discipline_passed", 1)),
+                        advice.get("provider", "deepseek"),
                         utc_now(),
                     ),
                 )
@@ -428,9 +431,37 @@ async def generate_ai_advice():
             from .advice import build_advice, Context
             ctx = latest_context(position)
             local_advice = build_advice(position, ctx or Context(None, None))
-            results.append({**position, **local_advice, "error": str(exc), "provider": "local_fallback"})
+            local_advice["provider"] = "local_fallback"
+            local_advice["error"] = str(exc)
 
-    return {"advice": results, "generated_at": date.today().isoformat()}
+            # Save fallback to database
+            with connect() as conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO advice_records
+                    (position_id, advice_date, pnl_ratio, risk_level, scenario, trim_trigger,
+                     stop_trigger, add_reference, action_advice, reason, discipline_passed, provider, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        local_advice.get("position_id", position["id"]),
+                        today,
+                        local_advice.get("pnl_ratio", 0),
+                        local_advice.get("risk_level", "中"),
+                        local_advice.get("scenario", "观察"),
+                        local_advice.get("trim_trigger", ""),
+                        local_advice.get("stop_trigger", ""),
+                        local_advice.get("add_reference", ""),
+                        local_advice.get("action_advice", ""),
+                        local_advice.get("reason", ""),
+                        int(local_advice.get("discipline_passed", 1)),
+                        "local_fallback",
+                        utc_now(),
+                    ),
+                )
+            results.append({**position, **local_advice})
+
+    return {"advice": results, "generated_at": today}
 
 
 @app.get("/api/advice.csv")

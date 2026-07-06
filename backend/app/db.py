@@ -82,8 +82,10 @@ def init_db() -> None:
                 action_advice TEXT NOT NULL,
                 reason TEXT NOT NULL,
                 discipline_passed INTEGER NOT NULL,
+                provider TEXT NOT NULL DEFAULT 'local',
                 created_at TEXT NOT NULL,
-                FOREIGN KEY(position_id) REFERENCES positions(id) ON DELETE CASCADE
+                FOREIGN KEY(position_id) REFERENCES positions(id) ON DELETE CASCADE,
+                UNIQUE(position_id, advice_date)
             );
 
             CREATE TABLE IF NOT EXISTS trade_logs (
@@ -153,6 +155,46 @@ def init_db() -> None:
             );
             """
         )
+        # Migration: add provider column to advice_records if not exists
+        try:
+            conn.execute("ALTER TABLE advice_records ADD COLUMN provider TEXT NOT NULL DEFAULT 'local'")
+        except sqlite3.OperationalError:
+            pass
+        # Migration: recreate table with UNIQUE constraint if needed
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS advice_records_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    position_id INTEGER NOT NULL,
+                    advice_date TEXT NOT NULL,
+                    pnl_ratio REAL NOT NULL,
+                    risk_level TEXT NOT NULL,
+                    scenario TEXT NOT NULL,
+                    trim_trigger TEXT NOT NULL,
+                    stop_trigger TEXT NOT NULL,
+                    add_reference TEXT NOT NULL,
+                    action_advice TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    discipline_passed INTEGER NOT NULL,
+                    provider TEXT NOT NULL DEFAULT 'local',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(position_id) REFERENCES positions(id) ON DELETE CASCADE,
+                    UNIQUE(position_id, advice_date)
+                )
+            """)
+            # Copy existing data
+            conn.execute("""
+                INSERT OR IGNORE INTO advice_records_new
+                SELECT id, position_id, advice_date, pnl_ratio, risk_level, scenario, trim_trigger,
+                       stop_trigger, add_reference, action_advice, reason, discipline_passed, provider, created_at
+                FROM advice_records
+            """)
+            # Drop old table and rename new
+            conn.execute("DROP TABLE advice_records")
+            conn.execute("ALTER TABLE advice_records_new RENAME TO advice_records")
+        except sqlite3.OperationalError:
+            # Table already has unique constraint or migration already done
+            pass
 
 
 def row_to_dict(row):
