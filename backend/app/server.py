@@ -14,15 +14,19 @@ from .db import init_db
 from .repository import (
     create_daily_analysis,
     create_kline,
+    create_llm_config,
     create_news,
     create_position,
     create_volume,
     dashboard_summary,
     deepseek_status,
+    delete_llm_config,
     delete_position,
+    get_llm_config,
     list_analysis_reports,
     list_advice,
     list_kline,
+    list_llm_configs,
     list_market_snapshots,
     list_news,
     list_positions,
@@ -30,6 +34,9 @@ from .repository import (
     rebuild_advice,
     seed_if_empty,
     save_market_snapshot,
+    set_active_llm_config,
+    test_llm_config,
+    update_llm_config,
     update_position,
 )
 
@@ -168,6 +175,23 @@ class Handler(BaseHTTPRequestHandler):
             return create_daily_analysis(self._read_json())
         if method == "GET" and path == "/api/settings/deepseek":
             return deepseek_status()
+        if method == "GET" and path == "/api/llm/configs":
+            return list_llm_configs()
+        if method == "POST" and path == "/api/llm/configs":
+            return create_llm_config(self._read_json())
+        if path.startswith("/api/llm/config/"):
+            config_id = self._path_id(path, "/api/llm/config/")
+            if method == "GET":
+                return get_llm_config(config_id)
+            if method == "PUT":
+                return update_llm_config(config_id, self._read_json())
+            if method == "DELETE":
+                delete_llm_config(config_id)
+                return {"deleted": True}
+            if method == "POST" and path.endswith("/activate"):
+                return set_active_llm_config(config_id)
+            if method == "POST" and path.endswith("/test"):
+                return test_llm_config(config_id)
         raise ApiError(404, "api not found")
 
     def _path_id(self, path: str, prefix: str) -> int:

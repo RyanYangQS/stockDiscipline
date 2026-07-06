@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 
+from .db import connect, row_to_dict
+
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 PROJECT_DIR = Path(__file__).resolve().parents[2]
@@ -16,3 +18,12 @@ DEFAULT_PORT = 8080
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
+
+def load_llm_config() -> dict | None:
+    """Load active LLM config from database, return None if not configured."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT provider, api_key, base_url, model FROM llm_config WHERE is_active = 1 LIMIT 1"
+        ).fetchone()
+        return row_to_dict(row)

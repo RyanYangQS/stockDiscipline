@@ -551,11 +551,131 @@ def list_analysis_reports() -> list[dict[str, Any]]:
 
 
 def deepseek_status() -> dict[str, Any]:
-    from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+    from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, load_llm_config
 
+    db_config = load_llm_config()
+    if db_config:
+        return {
+            "configured": bool(db_config.get("api_key")),
+            "base_url": db_config.get("base_url", DEEPSEEK_BASE_URL),
+            "model": db_config.get("model", DEEPSEEK_MODEL),
+            "provider": db_config.get("provider", "deepseek"),
+            "source": "database",
+            "key_hint": "已配置(数据库)" if db_config.get("api_key") else "未配置",
+        }
     return {
         "configured": bool(DEEPSEEK_API_KEY),
         "base_url": DEEPSEEK_BASE_URL,
         "model": DEEPSEEK_MODEL,
-        "key_hint": "已配置" if DEEPSEEK_API_KEY else "未配置，请设置环境变量 DEEPSEEK_API_KEY",
+        "source": "env",
+        "key_hint": "已配置(环境变量)" if DEEPSEEK_API_KEY else "未配置，请设置环境变量 DEEPSEEK_API_KEY",
     }
+
+
+def list_llm_configs() -> list[dict[str, Any]]:
+    with connect() as conn:
+        return rows_to_dicts(conn.execute("SELECT id, provider, display_name, api_key, base_url, model, is_active, created_at, updated_at FROM llm_config ORDER BY id").fetchall())
+
+
+def create_llm_config(payload: dict[str, Any]) -> dict[str, Any]:
+    now = utc_now()
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO llm_config (provider, display_name, api_key, base_url, model, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                payload["provider"],
+                payload["display_name"],
+                payload.get("api_key", ""),
+                payload.get("base_url", ""),
+                payload["model"],
+                int(payload.get("is_active", 0)),
+                now,
+                now,
+            ),
+        )
+        row = conn.execute("SELECT * FROM llm_config WHERE id = ?", (cur.lastrowid,)).fetchone()
+        return row_to_dict(row)
+
+
+def get_llm_config(config_id: int) -> dict[str, Any]:
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM llm_config WHERE id = ?", (config_id,)).fetchone()
+    if row is None:
+        raise KeyError("llm config not found")
+    return row_to_dict(row)
+
+
+def update_llm_config(config_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    current = get_llm_config(config_id)
+    merged = {**current, **payload}
+    now = utc_now()
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE llm_config SET provider = ?, display_name = ?, api_key = ?, base_url = ?, model = ?, is_active = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                merged["provider"],
+                merged["display_name"],
+                merged.get("api_key", ""),
+                merged.get("base_url", ""),
+                merged["model"],
+                int(merged.get("is_active", 0)),
+                now,
+                config_id,
+            ),
+        )
+    return get_llm_config(config_id)
+
+
+def delete_llm_config(config_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM llm_config WHERE id = ?", (config_id,))
+
+
+def set_active_llm_config(config_id: int) -> dict[str, Any]:
+    with connect() as conn:
+        conn.execute("UPDATE llm_config SET is_active = 0")
+        conn.execute("UPDATE llm_config SET is_active = 1 WHERE id = ?", (config_id,))
+    return get_llm_config(config_id)
+
+
+def test_llm_config(config_id: int) -> dict[str, Any]:
+    """Test LLM config connection by sending a simple request."""
+    config = get_llm_config(config_id)
+    api_key = config.get("api_key")
+    base_url = config.get("base_url", "").rstrip("/")
+    model = config.get("model")
+
+    if not api_key:
+        return {"success": False, "error": "API key not configured"}
+
+    import json
+    import urllib.request
+    import urllib.error
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "Hello"}],
+        "max_tokens": 10,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(f"{base_url}/chat/completions", data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body)
+            return {"success": True, "model": model, "response_preview": result.get("choices", [{}])[0].get("message", {}).get("content", "")[:50]}
+    except urllib.error.HTTPError as exc:
+        return {"success": False, "error": f"HTTP {exc.code}: {exc.read().decode()[:100]}"}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}

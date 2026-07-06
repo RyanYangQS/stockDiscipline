@@ -6,7 +6,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, load_llm_config
 
 
 Transport = Callable[[str, dict[str, str], dict[str, Any], int], dict[str, Any]]
@@ -54,6 +54,17 @@ def call_deepseek(
     transport: Transport = default_transport,
     timeout: int = 40,
 ) -> DeepSeekResult:
+    # Try to load active config from database first
+    db_config = load_llm_config()
+    if db_config and not api_key:
+        api_key = db_config.get("api_key") or DEEPSEEK_API_KEY
+        model = model or db_config.get("model") or DEEPSEEK_MODEL
+        base_url = base_url or db_config.get("base_url") or DEEPSEEK_BASE_URL
+    else:
+        key = api_key if api_key is not None else DEEPSEEK_API_KEY
+        selected_model = model or DEEPSEEK_MODEL
+        selected_base_url = (base_url or DEEPSEEK_BASE_URL).rstrip("/")
+
     key = api_key if api_key is not None else DEEPSEEK_API_KEY
     selected_model = model or DEEPSEEK_MODEL
     selected_base_url = (base_url or DEEPSEEK_BASE_URL).rstrip("/")
