@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from .config import DEFAULT_HOST, DEFAULT_PORT, FRONTEND_DIR, FRONTEND_DIST_DIR
 from .data_sources import check_akshare_available, fetch_kline, fetch_realtime_quote
 from .db import init_db
+from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_cls_news, scrape_eastmoney_news, scrape_sina_finance
 from .repository import (
     create_daily_analysis,
     create_kline,
@@ -208,6 +209,31 @@ class Handler(BaseHTTPRequestHandler):
             name = query.get("name", [""])[0]
             quote = fetch_realtime_quote(str(symbol), name)
             return quote or {"error": "quote not found"}
+        if method == "GET" and path == "/api/scraper/status":
+            return check_scraper_available()
+        if method == "POST" and path == "/api/news/scrape":
+            # Scrape all holdings news
+            positions = list_positions()
+            news_items = scrape_all_holdings_news(positions)
+            saved = []
+            for item in news_items:
+                try:
+                    saved.append(create_news(item))
+                except Exception:
+                    pass
+            return {"scraped": len(news_items), "saved": len(saved)}
+        if method == "POST" and path == "/api/news/scrape/market":
+            # Scrape market-wide news only
+            cls_news = scrape_cls_news(limit=15)
+            sina_news = scrape_sina_finance(limit=10)
+            all_news = cls_news + sina_news
+            saved = []
+            for item in all_news:
+                try:
+                    saved.append(create_news(item))
+                except Exception:
+                    pass
+            return {"scraped": len(all_news), "saved": len(saved)}
         raise ApiError(404, "api not found")
 
     def _path_id(self, path: str, prefix: str) -> int:

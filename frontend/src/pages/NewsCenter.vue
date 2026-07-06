@@ -2,9 +2,15 @@
   <Card title="智能市场分析" icon="ai" tone="primary">
     <template #subtitle>{{ statusText }}</template>
     <template #actions>
+      <button class="btn" :disabled="scraping" @click="scrapeNews">{{ scraping ? "抓取中..." : "自动抓取消息" }}</button>
       <button class="btn" @click="loadNews">刷新消息面</button>
       <button class="btn primary" :disabled="loading" @click="runAnalysis">{{ loading ? "生成中..." : "生成 AI 分析" }}</button>
     </template>
+    <div v-if="scraperStatus" class="scraper-status">
+      <span :class="scraperStatus.available ? 'status-ok' : 'status-error'">
+        {{ scraperStatus.available ? "爬虫已就绪" : `爬虫未安装: ${scraperStatus.error}` }}
+      </span>
+    </div>
     <form @submit.prevent>
       <label>补充说明<textarea v-model="extraNote" placeholder="补充今日盘面、重点板块或个人观察"></textarea></label>
     </form>
@@ -64,10 +70,12 @@ import { apiGet, apiPost } from "../services/api";
 
 const emit = defineEmits(["toast"]);
 const status = ref({});
+const scraperStatus = ref(null);
 const news = ref([]);
 const reports = ref([]);
 const extraNote = ref("");
 const loading = ref(false);
+const scraping = ref(false);
 
 const statusText = computed(() => `模型：${status.value.model || ""}；地址：${status.value.base_url || ""}`);
 
@@ -93,6 +101,27 @@ async function load() {
     reports.value = r;
   } catch (err) {
     emit("toast", err.message);
+  }
+}
+
+async function checkScraper() {
+  try {
+    scraperStatus.value = await apiGet("/api/scraper/status");
+  } catch (err) {
+    scraperStatus.value = { available: false, error: err.message };
+  }
+}
+
+async function scrapeNews() {
+  scraping.value = true;
+  try {
+    const result = await apiPost("/api/news/scrape");
+    emit("toast", `抓取 ${result.scraped} 条消息，保存 ${result.saved} 条`);
+    await loadNews();
+  } catch (err) {
+    emit("toast", err.message);
+  } finally {
+    scraping.value = false;
   }
 }
 
@@ -127,13 +156,30 @@ async function runAnalysis() {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await Promise.all([load(), checkScraper()]);
+});
 </script>
 
 <style scoped>
 .grid {
   grid-template-columns: repeat(2, minmax(280px, 1fr));
   align-items: stretch;
+}
+
+.scraper-status {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--table-header);
+  border-radius: 4px;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-error {
+  color: var(--danger);
 }
 
 .report-card {
