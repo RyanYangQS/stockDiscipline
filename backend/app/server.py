@@ -371,6 +371,68 @@ async def rebuild_advice_route():
     return rebuild_advice()
 
 
+@app.post("/api/advice/ai")
+async def generate_ai_advice():
+    """Generate position advice using AI for each holding."""
+    from .deepseek import call_deepseek_for_position
+    from .repository import kline_summary_for, latest_context, list_positions, utc_now
+
+    positions = list_positions()
+    if not positions:
+        return {"advice": [], "message": "无持仓数据"}
+
+    results = []
+    for position in positions:
+        try:
+            # Get context (news, volume)
+            ctx = latest_context(position)
+            context = {
+                "news": ctx.latest_news if ctx else None,
+                "volume": ctx.latest_volume if ctx else None,
+            }
+
+            # Get K-line summary if available
+            kline_summary = kline_summary_for(position["name"], position.get("symbol", ""))
+
+            # Call AI for position analysis
+            advice = call_deepseek_for_position(position, context, kline_summary)
+
+            # Save to database
+            with connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO advice_records
+                    (position_id, advice_date, pnl_ratio, risk_level, scenario, trim_trigger,
+                     stop_trigger, add_reference, action_advice, reason, discipline_passed, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        advice.get("position_id", position["id"]),
+                        advice.get("advice_date", date.today().isoformat()),
+                        advice.get("pnl_ratio", 0),
+                        advice.get("risk_level", "中"),
+                        advice.get("scenario", "观察"),
+                        advice.get("trim_trigger", ""),
+                        advice.get("stop_trigger", ""),
+                        advice.get("add_reference", ""),
+                        advice.get("action_advice", ""),
+                        advice.get("reason", ""),
+                        int(advice.get("discipline_passed", 1)),
+                        utc_now(),
+                    ),
+                )
+
+            results.append({**position, **advice})
+        except Exception as exc:
+            # Fallback to local advice on error
+            from .advice import build_advice, Context
+            ctx = latest_context(position)
+            local_advice = build_advice(position, ctx or Context(None, None))
+            results.append({**position, **local_advice, "error": str(exc), "provider": "local_fallback"})
+
+    return {"advice": results, "generated_at": date.today().isoformat()}
+
+
 @app.get("/api/advice.csv")
 async def get_advice_csv():
     rows = list_advice()

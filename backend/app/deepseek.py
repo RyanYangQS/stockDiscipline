@@ -4,6 +4,7 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Callable
 
 from .config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
@@ -170,6 +171,176 @@ def build_daily_prompt(context: dict[str, Any]) -> str:
 输入数据：
 {compact}
 """
+
+
+def build_position_analysis_prompt(position: dict[str, Any], context: dict[str, Any], kline_summary: dict[str, Any] | None = None) -> str:
+    """Build prompt for individual position analysis."""
+    pnl_ratio = position.get("pnl_ratio", 0)
+    pnl_pct = pnl_ratio * 100
+
+    prompt = f"""你是一个严格执行交易纪律的股票持仓分析专家。请对以下持仓生成操作建议。
+
+## 持仓基本信息
+- 股票名称: {position['name']}
+- 股票代码: {position.get('symbol', 'N/A')}
+- 持仓数量: {position['quantity']}股
+- 成本价: {position['cost_price']}元
+- 当前价: {position['current_price']}元
+- 浮亏/浮盈: {pnl_pct:.1f}% ({'亏损' if pnl_ratio < 0 else '盈利'})
+- 标的分类: {position.get('category', '观察仓')}
+- 行业: {position.get('sector', 'N/A')}
+- 备注: {position.get('note', '无')}
+
+## 消息面情况
+"""
+    if context.get("news"):
+        news = context["news"]
+        prompt += f"""
+- 最近消息: {news.get('title', '无')}
+- 消息情绪: {news.get('sentiment', '中性')}
+- 消息情景: {news.get('scenario', '无')}
+- 重要程度: {news.get('importance', '普通')}
+"""
+    else:
+        prompt += "- 无近期消息记录\n"
+
+    prompt += "\n## 量能情况\n"
+    if context.get("volume"):
+        vol = context["volume"]
+        prompt += f"""
+- 量能状态: {vol.get('volume_state', '未录入')}
+- 量比: {vol.get('volume_ratio', 1)}
+- 换手率: {vol.get('turnover_rate', 0)}%
+- 买入评分: {vol.get('buy_watch_score', 50)}分
+- 卖出风险: {vol.get('sell_risk_score', 50)}分
+- 筹码收集: {vol.get('accumulation_score', 50)}分
+"""
+    else:
+        prompt += "- 无量能快照记录\n"
+
+    prompt += "\n## K线概况\n"
+    if kline_summary:
+        prompt += f"""
+- 近期趋势: 5日涨跌{kline_summary.get('change_5d', 0)*100:.1f}%，20日涨跌{kline_summary.get('change_20d', 0)*100:.1f}%
+- 量能对比: 5日/20日均量比{kline_summary.get('volume_ratio_5_20', 1):.2f}
+- 近期高点: {kline_summary.get('recent_high', 'N/A')}元
+- 近期低点: {kline_summary.get('recent_low', 'N/A')}元
+"""
+    else:
+        prompt += "- 无K线数据\n"
+
+    prompt += """
+## 纪律规则(必须严格遵守)
+1. 弱势跟风票默认禁止加仓
+2. 深度浮亏(-15%以上)禁止扩大仓位
+3. 卖出/减仓建议优先于新的买入理由
+4. 监管/退市/财务造假等硬风险禁止新开仓
+5. 利好兑现+高换手+放量滞涨 → 优先按主力出货风险处理
+
+## 输出要求(JSON格式)
+请输出以下字段，每项必须有明确数值或描述:
+
+```json
+{
+  "scenario": "情景判断(如: 正常持仓观察/主力出货风险/恐慌性下跌观察等)",
+  "risk_level": "风险等级(高/中高/中/低)",
+  "trim_trigger": "减仓触发价和执行方案(具体价格+股数)",
+  "stop_trigger": "止损触发价和执行方案(具体价格+执行方式)",
+  "add_reference": "加仓参考(具体条件+价格区间，或'禁止加仓')",
+  "action_advice": "操作建议(一句话概括核心操作)",
+  "discipline_passed": 1或0(是否通过纪律检查)",
+  "reason": "判断依据(简述关键因素)"
+}
+```
+
+注意:
+- 所有价格必须是具体数值，不要用模糊表述
+- 触发价要考虑当前价格和成本价的合理偏离
+- 严格按纪律规则判断，不做乐观假设
+- 禁止预测股价走势，只给出触发条件和应对方案
+"""
+    return prompt
+
+
+def call_deepseek_for_position(
+    position: dict[str, Any],
+    context: dict[str, Any],
+    kline_summary: dict[str, Any] | None = None,
+    transport: Transport = default_transport,
+    timeout: int = 30,
+) -> dict[str, Any]:
+    """Call DeepSeek for position-specific advice."""
+    db_config = load_llm_config()
+    key = db_config.get("api_key") if db_config else DEEPSEEK_API_KEY
+    selected_model = db_config.get("model") if db_config else DEEPSEEK_MODEL
+    selected_base_url = (db_config.get("base_url") if db_config else DEEPSEEK_BASE_URL).rstrip("/") if db_config else DEEPSEEK_BASE_URL.rstrip("/")
+
+    # Calculate pnl_ratio if not provided
+    cost = float(position.get("cost_price", 0))
+    current = float(position.get("current_price", 0))
+    pnl_ratio = position.get("pnl_ratio") or ((current - cost) / cost if cost else 0)
+
+    position_with_pnl = {**position, "pnl_ratio": pnl_ratio}
+
+    if not key:
+        # Fallback to local rules
+        from .advice import build_advice, Context
+        ctx = Context(context.get("news"), context.get("volume"))
+        return build_advice(position_with_pnl, ctx)
+
+    prompt = build_position_analysis_prompt(position_with_pnl, context, kline_summary)
+
+    payload = {
+        "model": selected_model,
+        "messages": [
+            {"role": "system", "content": "你是严格的股票持仓纪律分析师，只输出JSON格式建议，不做预测。"},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+        "stream": False,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+
+    try:
+        raw = transport(f"{selected_base_url}/chat/completions", headers, payload, timeout)
+        content = raw.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        # Parse JSON from response
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            advice = json.loads(json_match.group())
+        else:
+            advice = json.loads(content)
+
+        # Ensure all required fields exist
+        return {
+            "position_id": position["id"],
+            "advice_date": date.today().isoformat() if 'date' in dir(date) else "2026-07-06",
+            "pnl_ratio": pnl_ratio,
+            "pnl_ratio_text": f"{pnl_ratio*100:+.1f}%",
+            "risk_level": advice.get("risk_level", "中"),
+            "scenario": advice.get("scenario", "正常持仓观察"),
+            "trim_trigger": advice.get("trim_trigger", "反弹减仓观察"),
+            "stop_trigger": advice.get("stop_trigger", "按纪律止损"),
+            "add_reference": advice.get("add_reference", "禁止加仓"),
+            "action_advice": advice.get("action_advice", "观察等待"),
+            "reason": advice.get("reason", "AI分析建议"),
+            "discipline_passed": int(advice.get("discipline_passed", 1)),
+            "provider": "deepseek",
+            "model": selected_model,
+        }
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        # Fallback to local rules on error
+        from .advice import build_advice, Context
+        ctx = Context(context.get("news"), context.get("volume"))
+        local_advice = build_advice(position_with_pnl, ctx)
+        local_advice["provider"] = "local_fallback"
+        local_advice["error"] = str(exc)
+        return local_advice
 
 
 def call_deepseek_for_volume(
