@@ -1,21 +1,20 @@
 <template>
-  <section class="panel">
-    <h2>DeepSeek 配置</h2>
+  <Card title="DeepSeek 配置" icon="settings" tone="primary">
     <div class="report">{{ JSON.stringify(status, null, 2) }}</div>
-  </section>
-  <section class="panel">
-    <h2>运行环境</h2>
+  </Card>
+  <Card title="运行环境" icon="settings" tone="default">
     <div class="report">DEEPSEEK_API_KEY=你的Key
 DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 启动示例：
 DEEPSEEK_API_KEY=sk-xxx PORT=8080 ./start.sh</div>
-  </section>
+  </Card>
 </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
+import Card from "../components/Card.vue";
 import { apiGet } from "../services/api";
 
 const emit = defineEmits(["toast"]);
@@ -25,4 +24,3 @@ onMounted(async () => {
   try { status.value = await apiGet("/api/settings/deepseek"); } catch (err) { emit("toast", err.message); }
 });
 </script>
-
