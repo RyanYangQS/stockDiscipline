@@ -1,52 +1,175 @@
 <template>
+  <Card title="智能市场分析" icon="ai" tone="primary">
+    <template #subtitle>{{ statusText }}</template>
+    <template #actions>
+      <button class="btn" @click="loadNews">刷新消息面</button>
+      <button class="btn primary" :disabled="loading" @click="runAnalysis">{{ loading ? "生成中..." : "生成 AI 分析" }}</button>
+    </template>
+    <form @submit.prevent>
+      <label>补充说明<textarea v-model="extraNote" placeholder="补充今日盘面、重点板块或个人观察"></textarea></label>
+    </form>
+  </Card>
   <div class="grid">
-    <Card title="录入消息面" icon="news" tone="primary">
-      <form @submit.prevent="saveNews">
-        <div class="form-grid">
-          <label>标的<input v-model="newsForm.name" /></label><label>来源<input v-model="newsForm.source" /></label>
-          <label class="wide">标题<input v-model="newsForm.title" required /></label>
-          <label>情绪<select v-model="newsForm.sentiment"><option>中性</option><option>重大利好</option><option>重大利空</option><option>利好兑现</option><option>监管风险</option><option>舆情过热</option><option>舆情恐慌</option></select></label>
-          <label>情景<select v-model="newsForm.scenario"><option></option><option>恐慌性下跌观察</option><option>主力出货风险</option><option>主力洗盘观察</option><option>利好兑现风险</option><option>利空释放观察</option></select></label>
-          <label>重要性<input v-model.number="newsForm.importance" type="number" min="0" max="100" /></label>
-          <label>链接<input v-model="newsForm.url" /></label>
-        </div>
-        <button class="btn primary" type="submit">保存消息</button>
-      </form>
+    <Card title="持仓相关消息" icon="news" tone="primary">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>标的</th><th>来源</th><th>情绪</th><th>标题</th></tr></thead>
+          <tbody>
+            <tr v-for="n in holdingsNews" :key="n.id">
+              <td>{{ n.published_at }}</td><td>{{ n.name }}</td><td>{{ n.source }}</td>
+              <td><span class="risk-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
+              <td>{{ n.title }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-if="!holdingsNews.length" class="text-muted">暂无持仓相关消息</p>
     </Card>
-    <Card title="市场快照" icon="chart" tone="default">
-      <form @submit.prevent="saveMarket">
-        <div class="form-grid">
-          <label>日期<input v-model="marketForm.snapshot_date" type="date" /></label><label>指数状态<input v-model="marketForm.index_state" /></label>
-          <label>市场量能<input v-model="marketForm.market_volume_state" /></label><label>涨停家数<input v-model.number="marketForm.limit_up_count" type="number" /></label>
-          <label>跌停家数<input v-model.number="marketForm.limit_down_count" type="number" /></label>
-          <label class="wide">热点板块<input v-model="marketForm.hot_sectors" /></label>
-          <label class="wide">风险事件<input v-model="marketForm.risk_events" /></label>
-        </div>
-        <button class="btn primary" type="submit">保存快照</button>
-      </form>
+    <Card title="市场热点" icon="chart" tone="default">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>来源</th><th>情绪</th><th>标题</th></tr></thead>
+          <tbody>
+            <tr v-for="n in marketNews" :key="n.id">
+              <td>{{ n.published_at }}</td><td>{{ n.source }}</td>
+              <td><span class="risk-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
+              <td>{{ n.title }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-if="!marketNews.length" class="text-muted">暂无市场热点消息</p>
     </Card>
   </div>
-  <Card title="消息列表" icon="news" tone="primary">
-    <div class="table-wrap"><table><thead><tr><th>时间</th><th>标的</th><th>来源</th><th>情绪</th><th>情景</th><th>标题</th></tr></thead>
-      <tbody><tr v-for="n in news" :key="n.id"><td>{{ n.published_at }}</td><td>{{ n.name }}</td><td>{{ n.source }}</td><td>{{ n.sentiment }}</td><td>{{ n.scenario }}</td><td>{{ n.title }}</td></tr></tbody>
-    </table></div>
-    <p v-if="!news.length" class="text-muted">暂无消息记录</p>
+  <Card title="AI 分析报告" icon="ai" tone="default">
+    <template #actions>
+      <button class="btn" @click="loadReports">刷新报告</button>
+    </template>
+    <article v-for="r in reports" :key="r.id" class="report-card">
+      <div class="report-header">
+        <h3>{{ r.report_date }}</h3>
+        <span class="model-tag">{{ r.model }}</span>
+      </div>
+      <MarkdownRender :content="r.content" />
+    </article>
+    <p v-if="!reports.length" class="text-muted">还没有生成 AI 分析报告</p>
   </Card>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import Card from "../components/Card.vue";
+import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
-import { today } from "../services/format";
 
 const emit = defineEmits(["toast"]);
+const status = ref({});
 const news = ref([]);
-const newsForm = reactive({ name: "", source: "", title: "", sentiment: "中性", importance: 50, scenario: "", url: "", published_at: today() });
-const marketForm = reactive({ snapshot_date: today(), index_state: "", market_volume_state: "", limit_up_count: 0, limit_down_count: 0, hot_sectors: "", risk_events: "" });
+const reports = ref([]);
+const extraNote = ref("");
+const loading = ref(false);
 
-async function load() { news.value = await apiGet("/api/news"); }
-async function saveNews() { await apiPost("/api/news", newsForm); await apiPost("/api/advice/rebuild"); newsForm.title = ""; await load(); emit("toast", "消息已保存"); }
-async function saveMarket() { await apiPost("/api/market", marketForm); emit("toast", "市场快照已保存"); }
-onMounted(() => load().catch((err) => emit("toast", err.message)));
+const statusText = computed(() => `模型：${status.value.model || ""}；地址：${status.value.base_url || ""}`);
+
+// Separate news: holdings-related vs market-wide
+const holdingsNews = computed(() => news.value.filter(n => n.name && n.name.trim()));
+const marketNews = computed(() => news.value.filter(n => !n.name || !n.name.trim()));
+
+function sentimentClass(sentiment) {
+  if (sentiment.includes('利空') || sentiment.includes('恐慌') || sentiment.includes('风险')) return 'danger';
+  if (sentiment.includes('利好')) return 'success';
+  return 'default';
+}
+
+async function load() {
+  try {
+    const [s, n, r] = await Promise.all([
+      apiGet("/api/settings/deepseek"),
+      apiGet("/api/news"),
+      apiGet("/api/analysis/reports")
+    ]);
+    status.value = s;
+    news.value = n;
+    reports.value = r;
+  } catch (err) {
+    emit("toast", err.message);
+  }
+}
+
+async function loadNews() {
+  try {
+    news.value = await apiGet("/api/news");
+    emit("toast", "消息面已刷新");
+  } catch (err) {
+    emit("toast", err.message);
+  }
+}
+
+async function loadReports() {
+  try {
+    reports.value = await apiGet("/api/analysis/reports");
+    emit("toast", "报告已刷新");
+  } catch (err) {
+    emit("toast", err.message);
+  }
+}
+
+async function runAnalysis() {
+  loading.value = true;
+  try {
+    await apiPost("/api/analysis/daily", { extra_note: extraNote.value });
+    await loadReports();
+    emit("toast", "AI分析已生成");
+  } catch (err) {
+    emit("toast", err.message);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(load);
 </script>
+
+<style scoped>
+.grid {
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  align-items: stretch;
+}
+
+.report-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--table-header);
+  border-radius: 8px;
+}
+
+.report-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.report-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.model-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+}
+
+textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+}
+</style>

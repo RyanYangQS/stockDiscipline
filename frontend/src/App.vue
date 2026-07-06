@@ -32,7 +32,6 @@ import Dashboard from "./pages/Dashboard.vue";
 import Holdings from "./pages/Holdings.vue";
 import KlineVolume from "./pages/KlineVolume.vue";
 import NewsCenter from "./pages/NewsCenter.vue";
-import AiAnalysis from "./pages/AiAnalysis.vue";
 import Settings from "./pages/Settings.vue";
 
 const current = ref("dashboard");
@@ -43,8 +42,7 @@ const nav = [
   { key: "dashboard", label: "总览", icon: "dashboard", desc: "持仓、量能、消息面、AI日报和纪律风险总控", component: Dashboard },
   { key: "holdings", label: "持仓建议", icon: "holdings", desc: "按附件表格输出到价位就执行的操作计划", component: Holdings },
   { key: "kline", label: "K线量能", icon: "kline", desc: "基于 KLineCharts 的专业K线与成交量分析", component: KlineVolume },
-  { key: "news", label: "消息面", icon: "news", desc: "公告、监管、新闻、舆情和市场快照", component: NewsCenter },
-  { key: "analysis", label: "AI日报", icon: "ai", desc: "每天汇总持仓、量能、消息和K线后交给 DeepSeek 分析", component: AiAnalysis },
+  { key: "news", label: "智能市场分析", icon: "ai", desc: "消息面、AI日报和市场智能分析", component: NewsCenter },
   { key: "settings", label: "设置", icon: "settings", desc: "DeepSeek、数据源和运行状态", component: Settings }
 ];
 
