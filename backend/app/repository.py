@@ -10,7 +10,7 @@ from .deepseek import call_deepseek
 
 SAMPLE_POSITIONS = [
     {
-        "symbol": "",
+        "symbol": "sh.600522",
         "name": "中天科技",
         "quantity": 1200,
         "cost_price": 54.61,
@@ -20,7 +20,7 @@ SAMPLE_POSITIONS = [
         "note": "来自附件样例",
     },
     {
-        "symbol": "",
+        "symbol": "sz.002138",
         "name": "顺络电子",
         "quantity": 200,
         "cost_price": 74.52,
@@ -30,7 +30,7 @@ SAMPLE_POSITIONS = [
         "note": "来自附件样例",
     },
     {
-        "symbol": "",
+        "symbol": "sh.605358",
         "name": "立昂微",
         "quantity": 500,
         "cost_price": 69.43,
@@ -40,7 +40,7 @@ SAMPLE_POSITIONS = [
         "note": "来自附件样例",
     },
     {
-        "symbol": "",
+        "symbol": "sz.002654",
         "name": "万润科技",
         "quantity": 200,
         "cost_price": 22.61,
@@ -50,7 +50,7 @@ SAMPLE_POSITIONS = [
         "note": "来自附件样例",
     },
     {
-        "symbol": "",
+        "symbol": "sh.603533",
         "name": "掌阅科技",
         "quantity": 200,
         "cost_price": 20.32,
@@ -88,6 +88,21 @@ def seed_if_empty() -> None:
                     ),
                 )
         seed_kline_if_empty(conn)
+        backfill_sample_symbols(conn)
+
+
+def backfill_sample_symbols(conn) -> None:
+    """Fill stock codes for existing seeded positions created before symbols existed."""
+    now = utc_now()
+    for item in SAMPLE_POSITIONS:
+        conn.execute(
+            """
+            UPDATE positions
+            SET symbol = ?, updated_at = ?
+            WHERE name = ? AND (symbol = '' OR symbol IS NULL)
+            """,
+            (item["symbol"], now, item["name"]),
+        )
 
 
 def list_positions() -> list[dict[str, Any]]:
@@ -433,7 +448,7 @@ def list_advice() -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute(
             """
-            SELECT p.symbol, p.name, p.quantity, p.cost_price, p.current_price, p.category,
+            SELECT p.id as position_id, p.symbol, p.name, p.quantity, p.cost_price, p.current_price, p.category, p.sector, p.note,
                    a.advice_date, a.pnl_ratio, a.risk_level, a.scenario, a.trim_trigger,
                    a.stop_trigger, a.add_reference, a.action_advice, a.reason, a.discipline_passed
             FROM advice_records a
