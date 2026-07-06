@@ -3,6 +3,8 @@
 !.env.example
 stock-discipline.pid
 stock-discipline.log
+backend.pid
+backend.log
 frontend-vite.pid
 frontend-vite.log
 __pycache__/
