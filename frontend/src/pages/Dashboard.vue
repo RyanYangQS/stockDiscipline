@@ -32,12 +32,6 @@
         <button class="btn" :disabled="isRefreshing" @click="load(false)">{{ isRefreshing ? '刷新中...' : '刷新' }}</button>
         <button class="btn primary" :disabled="isRefreshing" @click="generateDailyReport">生成日报</button>
       </template>
-      <div v-if="keyHighlights.length" class="key-highlights">
-        <div v-for="h in keyHighlights" :key="h.label" class="highlight-card" :class="h.tone">
-          <span class="highlight-label">{{ h.label }}</span>
-          <span class="highlight-value">{{ h.value }}</span>
-        </div>
-      </div>
       <MarkdownRender v-if="latestReport" :content="latestReport" />
       <p v-else class="text-muted">还没有生成 AI 日报，点击"生成日报"按钮。</p>
     </Card>
@@ -80,31 +74,6 @@ function getMetricClass(item) {
 }
 
 const latestReport = computed(() => reports.value[0]?.content || "");
-
-// Extract key highlights from AI report
-const keyHighlights = computed(() => {
-  const report = latestReport.value;
-  if (!report) return [];
-
-  const highlights = [];
-  // Extract 盈亏 section
-  const pnlMatch = report.match(/盈亏[^：:]*[：:]\s*([^\n]+)/);
-  if (pnlMatch) {
-    highlights.push({ label: '盈亏', value: pnlMatch[1].slice(0, 50), tone: 'primary' });
-  }
-  // Extract 建议 section
-  const adviceMatch = report.match(/建议[^：:]*[：:]\s*([^\n]+)/);
-  if (adviceMatch) {
-    highlights.push({ label: '建议', value: adviceMatch[1].slice(0, 50), tone: 'success' });
-  }
-  // Extract 风险 section
-  const riskMatch = report.match(/风险[^：:]*[：:]\s*([^\n]+)/);
-  if (riskMatch) {
-    highlights.push({ label: '风险', value: riskMatch[1].slice(0, 50), tone: 'danger' });
-  }
-
-  return highlights;
-});
 
 async function load(showNotification = false, useCache = true) {
   // Load cached data first if available (for immediate display)
@@ -276,6 +245,7 @@ onBeforeUnmount(stopRefreshTimer);
   background: var(--table-header);
   color: var(--ink);
   line-height: 1.5;
+  text-align: left;
 }
 
 .risk-item.is-high {
@@ -298,6 +268,20 @@ onBeforeUnmount(stopRefreshTimer);
   border-left: 3px solid #16a34a;
 }
 
+/* Risk tag in Dashboard */
+.risk-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+.risk-tag.is-high { background: #dc2626; color: white; }
+.risk-tag.is-medium-high { background: #f59e0b; color: white; }
+.risk-tag.is-medium { background: #6b7280; color: white; }
+.risk-tag.is-low { background: #16a34a; color: white; }
+
 /* Dark mode fixes */
 @media (prefers-color-scheme: dark) {
   .risk-item {
@@ -316,47 +300,5 @@ onBeforeUnmount(stopRefreshTimer);
   .metric-card.loss .metric-icon-wrap {
     background: rgba(22, 163, 74, 0.2);
   }
-}
-
-/* Key highlights section */
-.key-highlights {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.highlight-card {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 14px;
-  border-radius: 6px;
-  background: var(--table-header);
-  min-width: 120px;
-}
-
-.highlight-card.primary {
-  border-left: 3px solid var(--primary);
-}
-
-.highlight-card.success {
-  border-left: 3px solid var(--ok);
-}
-
-.highlight-card.danger {
-  border-left: 3px solid var(--danger);
-}
-
-.highlight-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.highlight-value {
-  font-size: 14px;
-  color: var(--ink);
-  line-height: 1.4;
 }
 </style>

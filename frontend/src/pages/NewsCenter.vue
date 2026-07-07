@@ -1,5 +1,5 @@
 <template>
-  <Card title="智能市场分析" icon="ai" tone="primary">
+  <Card title="市场分析" icon="ai" tone="primary">
     <template #subtitle>{{ statusText }}</template>
     <template #actions>
       <button class="btn" :disabled="scraping" @click="scrapeNews()">{{ scraping ? "抓取中..." : "自动抓取消息" }}</button>
@@ -15,7 +15,7 @@
       <label>补充说明<textarea v-model="extraNote" placeholder="补充今日盘面、重点板块或个人观察"></textarea></label>
     </form>
   </Card>
-  <div class="grid">
+  <div class="stack-layout">
     <Card title="持仓相关消息" icon="news" tone="primary">
       <template #subtitle>每只持仓显示今日最热门5条消息</template>
       <div v-for="(items, stockName) in groupedHoldingsNews" :key="stockName" class="news-group">
@@ -288,9 +288,15 @@ onBeforeUnmount(stopAutoRefresh);
 </script>
 
 <style scoped>
-.grid {
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  align-items: stretch;
+/* Vertical stack layout for news cards */
+.stack-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stack-layout > * {
+  width: 100%;
 }
 
 .scraper-status {

@@ -70,11 +70,14 @@ renderer.link = function(token) {
 renderer.paragraph = function(token) {
   const paragraphText = token.text;
 
-  // Highlight key sections: 盈亏、建议、风险
+  // Highlight key sections with A-share color convention
+  // Red (上涨): 利好, 上涨, 急涨, 涨幅, 强势, 突破
+  // Green (下跌): 风险, 利空, 下跌, 急跌, 跌幅, 回撤, 破位
+  // Yellow (警告): 建议, 注意, 观察, 谨慎, 提示, 警惕
   const highlightedText = paragraphText
-    .replace(/盈亏/g, '<span class="highlight-pnl">$&</span>')
-    .replace(/建议/g, '<span class="highlight-advice">$&</span>')
-    .replace(/风险/g, '<span class="highlight-risk">$&</span>');
+    .replace(/(利好|上涨|急涨|涨幅|强势|突破|新高)/g, '<span class="highlight-up">$1</span>')
+    .replace(/(风险|利空|下跌|急跌|跌幅|回撤|破位|新低|止损)/g, '<span class="highlight-down">$1</span>')
+    .replace(/(建议|注意|观察|谨慎|提示|警惕|关键|重要)/g, '<span class="highlight-warn">$1</span>');
 
   return `<p>${highlightedText}</p>`;
 };
@@ -224,22 +227,31 @@ const renderedContent = computed(() => {
   margin: 20px 0;
 }
 
-/* Key section highlights */
-.markdown-render :deep(.highlight-pnl) {
-  color: var(--primary);
+/* Key section highlights - A-share color convention */
+/* Red for positive/up keywords (A股上涨色) */
+.markdown-render :deep(.highlight-up) {
+  color: #dc2626;
   font-weight: 600;
-  background: linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(23, 107, 135, 0.1) 70%);
+  background: rgba(220, 38, 38, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
-.markdown-render :deep(.highlight-advice) {
-  color: var(--ok);
+/* Green for risk/down keywords (A股下跌色) */
+.markdown-render :deep(.highlight-down) {
+  color: #16a34a;
   font-weight: 600;
-  background: linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(6, 118, 71, 0.1) 70%);
+  background: rgba(22, 163, 74, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
-.markdown-render :deep(.highlight-risk) {
-  color: var(--danger);
+/* Yellow/orange for warning keywords */
+.markdown-render :deep(.highlight-warn) {
+  color: #d97706;
   font-weight: 600;
-  background: linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(180, 35, 24, 0.1) 70%);
+  background: rgba(217, 119, 6, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 </style>

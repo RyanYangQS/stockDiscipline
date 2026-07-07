@@ -35,6 +35,7 @@
             <td class="col-name">
               <strong>{{ row.name }}</strong>
               <br><span class="text-muted small">{{ row.symbol || '-' }}</span>
+              <span v-if="row.risk_level" class="risk-tag-small" :class="riskClass(row.risk_level)">{{ row.risk_level }}风险</span>
               <span v-if="row.provider" class="provider-tag" :class="row.provider">{{ row.provider === 'deepseek' ? 'AI' : '本地' }}</span>
             </td>
             <td class="col-qty">{{ row.quantity }}股</td>
@@ -44,7 +45,7 @@
             <td class="col-cat">
               <span class="category-tag" :class="categoryClass(row.category)">{{ row.category }}</span>
             </td>
-            <td class="col-scenario"><span class="risk-tag" :class="riskClass(row.risk_level)">{{ row.scenario }}</span></td>
+            <td class="col-scenario">{{ row.scenario }}</td>
             <td class="col-trigger">
               <span class="trigger-text">{{ highlightTrigger(row.trim_trigger, '减仓') }}</span>
             </td>
@@ -486,6 +487,21 @@ onBeforeUnmount(stopDisplayTimer);
 .risk-tag.is-medium-high { background: #fef3c7; color: #d97706; }
 .risk-tag.is-medium { background: #e5e7eb; color: #6b7280; }
 .risk-tag.is-low { background: #d1fae5; color: #059669; }
+
+/* Small risk tag in name column */
+.risk-tag-small {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.risk-tag-small.is-high { background: #fee2e2; color: #dc2626; }
+.risk-tag-small.is-medium-high { background: #fef3c7; color: #d97706; }
+.risk-tag-small.is-medium { background: #e5e7eb; color: #6b7280; }
+.risk-tag-small.is-low { background: #d1fae5; color: #059669; }
 
 /* Trigger text highlighting */
 .trigger-text {
