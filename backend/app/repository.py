@@ -153,7 +153,7 @@ def update_position(position_id: int, payload: dict[str, Any]) -> dict[str, Any]
             """
             UPDATE positions
             SET symbol = ?, name = ?, quantity = ?, cost_price = ?, current_price = ?,
-                category = ?, sector = ?, note = ?, updated_at = ?
+                intraday_change_pct = ?, category = ?, sector = ?, note = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -162,6 +162,7 @@ def update_position(position_id: int, payload: dict[str, Any]) -> dict[str, Any]
                 int(merged["quantity"]),
                 float(merged["cost_price"]),
                 float(merged["current_price"]),
+                float(merged.get("intraday_change_pct", 0)),
                 merged.get("category", "观察仓"),
                 merged.get("sector", ""),
                 merged.get("note", ""),
@@ -721,27 +722,36 @@ def test_llm_config(config_id: int) -> dict[str, Any]:
         return {"success": False, "error": "API key not configured"}
 
     import json
-    import urllib.request
-    import urllib.error
+    import subprocess
 
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": "Hello"}],
         "max_tokens": 10,
     }
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-    }
 
     try:
-        data = json.dumps(payload).encode("utf-8")
-        request = urllib.request.Request(f"{base_url}/chat/completions", data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(request, timeout=10) as response:
-            body = response.read().decode("utf-8")
-            result = json.loads(body)
-            return {"success": True, "model": model, "response_preview": result.get("choices", [{}])[0].get("message", {}).get("content", "")[:50]}
-    except urllib.error.HTTPError as exc:
-        return {"success": False, "error": f"HTTP {exc.code}: {exc.read().decode()[:100]}"}
+        # Use curl with IPv4 to avoid SSL/IPv6 issues
+        result = subprocess.run(
+            ["curl", "-s", "-4", "--max-time", "15", "-X", "POST",
+             "-H", "Content-Type: application/json",
+             "-H", f"Authorization: Bearer {api_key}",
+             "-d", json.dumps(payload),
+             f"{base_url}/chat/completions"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if result.returncode != 0:
+            return {"success": False, "error": f"curl failed: {result.stderr[:100]}"}
+
+        body = result.stdout
+        result_json = json.loads(body)
+        content = result_json.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return {"success": True, "model": model, "response_preview": content[:50]}
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "请求超时"}
+    except json.JSONDecodeError as exc:
+        return {"success": False, "error": f"JSON解析失败: {str(exc)[:100]}"}
     except Exception as exc:
         return {"success": False, "error": str(exc)}

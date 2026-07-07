@@ -199,8 +199,7 @@ def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, A
 def fetch_eastmoney_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
     """Fetch real-time quote from Eastmoney API (works during trading hours)."""
     import json
-    import urllib.request
-    import urllib.parse
+    import subprocess
 
     if not symbol:
         symbol = _search_stock_code(name)
@@ -208,19 +207,22 @@ def fetch_eastmoney_realtime_quote(symbol: str, name: str = "") -> dict[str, Any
     if not secid:
         return None
 
-    params = urllib.parse.urlencode({
-        "secid": secid,
-        "fields": "f43,f44,f45,f46,f47,f48,f50,f51,f55,f57,f58,f60",
-    })
+    # Use curl with IPv4 only (IPv6 causes SSL handshake timeout)
+    params = f"secid={secid}&fields=f43,f44,f45,f46,f47,f48,f50,f51,f55,f57,f58,f60"
     url = f"https://push2.eastmoney.com/api/qt/stock/get?{params}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "https://quote.eastmoney.com/",
-    }
+
     try:
-        req = urllib.request.Request(url, headers=headers)
-        response = urllib.request.urlopen(req, timeout=10)
-        payload = json.loads(response.read().decode("utf-8"))
+        result = subprocess.run(
+            ["curl", "-s", "-4", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0",
+             "-H", "Referer: https://quote.eastmoney.com/", url],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if result.returncode != 0 or not result.stdout:
+            return None
+
+        payload = json.loads(result.stdout)
         data = payload.get("data") or {}
         if not data:
             return None

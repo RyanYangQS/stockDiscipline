@@ -353,11 +353,15 @@ async def refresh_all_prices():
         try:
             quote = fetch_realtime_quote(position.get("symbol", ""), position.get("name", ""))
             if quote and quote.get("current_price"):
-                update_position(position["id"], {"current_price": quote["current_price"]})
+                update_position(position["id"], {
+                    "current_price": quote["current_price"],
+                    "intraday_change_pct": quote.get("change_pct", 0),
+                })
                 updated.append({
                     "name": position["name"],
                     "old_price": position["current_price"],
                     "new_price": quote["current_price"],
+                    "change_pct": quote.get("change_pct", 0),
                 })
         except Exception as exc:
             updated.append({
@@ -693,7 +697,12 @@ async def activate_llm_config(config_id: int):
 
 @app.post("/api/llm/config/{config_id}/test")
 async def test_llm_config_route(config_id: int):
-    return test_llm_config(config_id)
+    try:
+        return test_llm_config(config_id)
+    except KeyError:
+        return {"success": False, "error": "配置不存在"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # === Data Sources ===

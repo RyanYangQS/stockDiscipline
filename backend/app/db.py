@@ -234,6 +234,11 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             # Table already has unique constraint or migration already done
             pass
+        # Migration: add intraday_change_pct to positions for price alert functionality
+        try:
+            conn.execute("ALTER TABLE positions ADD COLUMN intraday_change_pct REAL NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
 
 def row_to_dict(row):
