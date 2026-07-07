@@ -321,27 +321,48 @@ def fetch_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
 
 
 def fetch_intraday_kline(symbol: str, name: str = "", period: int = 5, limit: int = 240) -> list[dict[str, Any]]:
-    """Fetch minute-level K-line data from Eastmoney."""
+    """Fetch minute-level K-line data from multiple sources (Eastmoney -> Tencent -> Sina)."""
     if not symbol:
         symbol = _search_stock_code(name)
-    secid = _eastmoney_secid(symbol)
-    if not secid:
-        return []
 
     klt = int(period or 5)
     if klt not in {1, 5, 15, 30, 60}:
         klt = 5
     safe_limit = max(30, min(int(limit or 240), 1200))
 
+    # 尝试东方财富数据源
+    bars = _fetch_eastmoney_intraday(symbol, name, klt, safe_limit)
+    if bars:
+        return bars
+
+    # 尝试腾讯数据源
+    bars = _fetch_tencent_intraday_kline(symbol, name, klt, safe_limit)
+    if bars:
+        return bars
+
+    # 尝试新浪数据源
+    bars = _fetch_sina_intraday(symbol, name, klt, safe_limit)
+    if bars:
+        return bars
+
+    return []
+
+
+def _fetch_eastmoney_intraday(symbol: str, name: str, period: int, limit: int) -> list[dict[str, Any]]:
+    """东方财富分时K线数据源"""
+    secid = _eastmoney_secid(symbol)
+    if not secid:
+        return []
+
     params = {
         "secid": secid,
         "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
-        "klt": str(klt),
+        "klt": str(period),
         "fqt": "1",
         "beg": "0",
         "end": "20500101",
-        "lmt": str(safe_limit),
+        "lmt": str(limit),
     }
     try:
         session = requests.Session()
@@ -366,27 +387,85 @@ def fetch_intraday_kline(symbol: str, name: str = "", period: int = 5, limit: in
                 "close_price": float(parts[2] or 0),
                 "high_price": float(parts[3] or 0),
                 "low_price": float(parts[4] or 0),
-                # Keep backend volume unit consistent with daily bars: shares.
                 "volume": volume_hands * 100,
                 "amount": float(parts[6] or 0),
                 "amplitude": float(parts[7] or 0),
                 "change_pct": float(parts[8] or 0),
                 "change_value": float(parts[9] or 0),
                 "turnover_rate": float(parts[10] or 0),
-                "period": klt,
+                "period": period,
+                "source": "eastmoney",
             })
         if bars:
+            logger.info(f"东方财富分时K线成功: {symbol} {len(bars)}条")
             return bars
     except Exception as e:
-        logger.error(f"Eastmoney fetch_intraday_kline error: {e}")
+        logger.warning(f"东方财富分时K线失败: {e}")
 
-    return _fetch_tencent_intraday_kline(symbol, name, klt, safe_limit)
+    return []
+
+
+def _fetch_sina_intraday(symbol: str, name: str, period: int, limit: int) -> list[dict[str, Any]]:
+    """新浪财经分时K线数据源"""
+    # 新浪股票代码格式: sh600522 或 sz002138
+    sina_code = symbol.replace(".", "").replace("sh", "sh").replace("sz", "sz")
+
+    try:
+        # 新浪财经历史分时数据接口
+        url = f"https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData"
+        params = {
+            "symbol": sina_code,
+            "scale": str(period),
+            "ma": "no",
+            "datalen": str(limit),
+        }
+
+        response = requests.get(url, params=params, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        response.raise_for_status()
+
+        # 新浪返回JSON数组格式
+        data = response.json()
+        if not data or not isinstance(data, list):
+            return []
+
+        bars = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+
+            bars.append({
+                "symbol": symbol,
+                "name": name,
+                "trade_date": item.get("day", ""),
+                "open_price": float(item.get("open", 0)),
+                "close_price": float(item.get("close", 0)),
+                "high_price": float(item.get("high", 0)),
+                "low_price": float(item.get("low", 0)),
+                "volume": float(item.get("volume", 0)),
+                "amount": float(item.get("amount", 0)),
+                "amplitude": 0,
+                "change_pct": 0,
+                "change_value": 0,
+                "turnover_rate": 0,
+                "period": period,
+                "source": "sina",
+            })
+
+        if bars:
+            logger.info(f"新浪分时K线成功: {symbol} {len(bars)}条")
+            return bars
+    except Exception as e:
+        logger.warning(f"新浪分时K线失败: {e}")
+
+    return []
 
 
 def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: int) -> list[dict[str, Any]]:
+    """腾讯分时K线数据源"""
     code = _market_code(symbol)
     if not code:
         return []
+
     try:
         response = requests.get(
             "https://web.ifzq.gtimg.cn/appstock/app/minute/query",
@@ -402,6 +481,7 @@ def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: in
         minute_rows = []
         previous_volume = 0.0
         previous_amount = 0.0
+
         for row in rows:
             parts = row.split()
             if len(parts) < 4:
@@ -413,11 +493,84 @@ def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: in
             minute_rows.append({
                 "time": f"{minute[:2]}:{minute[2:]}",
                 "price": price,
-                "volume_hands": max(0.0, cumulative_volume - previous_volume),
+                "volume": max(0.0, cumulative_volume - previous_volume) * 100,
                 "amount": max(0.0, cumulative_amount - previous_amount),
             })
             previous_volume = cumulative_volume
             previous_amount = cumulative_amount
+
+        # 如果需要非1分钟K线,需要聚合处理
+        bars = []
+        if period == 1:
+            for idx, row in enumerate(minute_rows):
+                bars.append({
+                    "symbol": symbol,
+                    "name": name,
+                    "trade_date": f"{trade_day} {row['time']}",
+                    "open_price": row["price"],
+                    "close_price": row["price"],
+                    "high_price": row["price"],
+                    "low_price": row["price"],
+                    "volume": row["volume"],
+                    "amount": row["amount"],
+                    "amplitude": 0,
+                    "change_pct": 0,
+                    "change_value": 0,
+                    "turnover_rate": 0,
+                    "period": period,
+                    "source": "tencent",
+                })
+        else:
+            # 聚合为N分钟K线
+            aggregated = []
+            for i in range(0, len(minute_rows), period):
+                chunk = minute_rows[i:i + period]
+                if not chunk:
+                    continue
+
+                open_price = chunk[0]["price"]
+                close_price = chunk[-1]["price"]
+                high_price = max(row["price"] for row in chunk)
+                low_price = min(row["price"] for row in chunk)
+                total_volume = sum(row["volume"] for row in chunk)
+                total_amount = sum(row["amount"] for row in chunk)
+
+                aggregated.append({
+                    "time": chunk[0]["time"],
+                    "open": open_price,
+                    "close": close_price,
+                    "high": high_price,
+                    "low": low_price,
+                    "volume": total_volume,
+                    "amount": total_amount,
+                })
+
+            for idx, row in enumerate(aggregated):
+                bars.append({
+                    "symbol": symbol,
+                    "name": name,
+                    "trade_date": f"{trade_day} {row['time']}",
+                    "open_price": row["open"],
+                    "close_price": row["close"],
+                    "high_price": row["high"],
+                    "low_price": row["low"],
+                    "volume": row["volume"],
+                    "amount": row["amount"],
+                    "amplitude": 0,
+                    "change_pct": 0,
+                    "change_value": 0,
+                    "turnover_rate": 0,
+                    "period": period,
+                    "source": "tencent",
+                })
+
+        if bars:
+            logger.info(f"腾讯分时K线成功: {symbol} {len(bars)}条")
+            return bars[-limit:]
+    except Exception as e:
+        logger.warning(f"腾讯分时K线失败: {e}")
+
+    return []
 
         grouped = []
         for index in range(0, len(minute_rows), period):
