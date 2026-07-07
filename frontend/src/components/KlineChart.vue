@@ -73,6 +73,10 @@ function initChart() {
   chart.setCustomApi({
     formatBigNumber: formatBigNumberCN
   });
+  
+  // 根据mode设置图表样式
+  const isMinuteMode = props.mode === 'minute';
+  
   chart.setStyles({
     grid: {
       show: true,
@@ -80,9 +84,10 @@ function initChart() {
       vertical: { show: true, color: "#edf0f3", size: 1, style: LineType.Solid, dashedValue: [] }
     },
     candle: {
-      type: CandleType.CandleUpStroke,
+      // 分时图使用线图，日K使用蜡烛图
+      type: isMinuteMode ? CandleType.Line : CandleType.CandleUpStroke,
       bar: {
-        upColor: "#ffffff",
+        upColor: isMinuteMode ? "#ff1f1f" : "#ffffff",
         downColor: "#008000",
         noChangeColor: "#ffffff",
         upBorderColor: "#ff1f1f",
@@ -93,9 +98,9 @@ function initChart() {
         noChangeWickColor: "#666666"
       },
       priceMark: {
-        high: { show: true, color: "#111827" },
-        low: { show: true, color: "#111827" },
-        last: { show: true, line: { show: false }, text: { show: true } }
+        high: { show: !isMinuteMode, color: "#111827" },
+        low: { show: !isMinuteMode, color: "#111827" },
+        last: { show: true, line: { show: isMinuteMode, color: "#ff1f1f", size: 1 }, text: { show: true } }
       },
       tooltip: {
         showRule: TooltipShowRule.FollowCross,
