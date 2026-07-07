@@ -150,7 +150,7 @@ import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
-import { getCache, setCache, clearCache } from "../services/cache";
+import { getCache, setCache, clearCache, getPersistentCache } from "../services/cache";
 
 const emit = defineEmits(["toast"]);
 const positions = ref([]);
