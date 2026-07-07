@@ -2,13 +2,17 @@
   <Card title="专业 K线量能图" icon="kline" tone="primary">
     <template #subtitle>使用 KLineCharts 展示蜡烛图与成交量指标</template>
     <template #actions>
-      <select v-model="selectedName" @change="onStockChange"><option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}{{ p.symbol ? ` (${p.symbol})` : "" }}</option></select>
-      <div class="mode-tabs">
-        <button class="tab-btn" :class="{ active: chartMode === 'daily' }" @click="switchMode('daily')">日K</button>
-        <button class="tab-btn" :class="{ active: chartMode === 'minute' }" @click="switchMode('minute')">分时K线</button>
+      <div class="actions-row">
+        <select v-model="selectedName" @change="onStockChange" class="stock-select">
+          <option v-for="p in positions" :key="p.id" :value="p.name">{{ p.name }}{{ p.symbol ? ` (${p.symbol})` : "" }}</option>
+        </select>
+        <div class="mode-tabs compact">
+          <button class="tab-btn compact" :class="{ active: chartMode === 'daily' }" @click="switchMode('daily')">日K</button>
+          <button class="tab-btn compact" :class="{ active: chartMode === 'minute' }" @click="switchMode('minute')">分时</button>
+        </div>
+        <button class="btn compact" :disabled="loading" @click="refreshChart">{{ loading ? "获取中..." : "刷新" }}</button>
+        <button class="btn compact primary" :disabled="aiLoading" @click="runAIAnalysis">{{ aiLoading ? "分析中..." : "AI分析" }}</button>
       </div>
-      <button class="btn" :disabled="loading" @click="refreshChart">{{ loading ? "获取中..." : "刷新K线" }}</button>
-      <button class="btn primary" :disabled="aiLoading" @click="runAIAnalysis">{{ aiLoading ? "分析中..." : "AI量能分析" }}</button>
     </template>
     <div v-if="dataStatus" class="data-status">
       <span :class="dataStatus.available ? 'status-ok' : 'status-error'">
@@ -393,7 +397,15 @@ async function runAIAnalysis() {
 onMounted(async () => {
   try {
     await Promise.all([loadPositions(), checkDataStatus()]);
-    await loadKline();
+    // Auto load first position's data
+    if (positions.value.length && selectedName.value) {
+      await loadKline();
+      await refreshQuote();
+      // Trigger AI analysis for the first stock
+      if (bars.value.length >= 5) {
+        await runAIAnalysis();
+      }
+    }
   } catch (err) {
     emit("toast", err.message);
   }
@@ -403,6 +415,58 @@ onBeforeUnmount(stopMinuteTimer);
 </script>
 
 <style scoped>
+/* Actions row - compact and responsive */
+.actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stock-select {
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  min-width: 120px;
+}
+
+.mode-tabs.compact {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.tab-btn.compact {
+  min-height: 28px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  padding: 4px 10px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.tab-btn.compact:last-child {
+  border-right: 0;
+}
+
+.tab-btn.compact.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+.btn.compact {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 28px;
+}
+
 .data-status {
   margin-bottom: 12px;
   padding: 8px;
@@ -416,34 +480,6 @@ onBeforeUnmount(stopMinuteTimer);
 
 .status-error {
   color: var(--danger);
-}
-
-.mode-tabs {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--panel);
-}
-
-.tab-btn {
-  min-height: 38px;
-  border: 0;
-  border-right: 1px solid var(--line);
-  padding: 0 14px;
-  color: var(--muted);
-  background: transparent;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.tab-btn:last-child {
-  border-right: 0;
-}
-
-.tab-btn.active {
-  color: #fff;
-  background: var(--primary);
 }
 
 .chart-meta {
