@@ -150,6 +150,7 @@ import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
+import { getCache, setCache } from "../services/cache";
 
 const emit = defineEmits(["toast"]);
 const positions = ref([]);
@@ -240,15 +241,43 @@ function getRiskClass(level) {
 }
 
 async function loadPositions() {
-  positions.value = await apiGet("/api/positions");
-  selectedName.value ||= positions.value[0]?.name || "";
+  // Load cached positions first for immediate display
+  const cachedPositions = getCache('kline_positions');
+  if (cachedPositions) {
+    positions.value = cachedPositions;
+    selectedName.value = cachedPositions[0]?.name || "";
+  }
+
+  // Fetch fresh data
+  try {
+    const data = await apiGet("/api/positions");
+    positions.value = data;
+    setCache('kline_positions', data);
+    if (!selectedName.value) {
+      selectedName.value = data[0]?.name || "";
+    }
+  } catch (err) {
+    // If fetch fails and no cache, set empty
+    if (!cachedPositions) {
+      positions.value = [];
+    }
+  }
 }
 
 async function checkDataStatus() {
+  const cachedStatus = getCache('data_status', 60000); // 1 minute cache for status
+  if (cachedStatus) {
+    dataStatus.value = cachedStatus;
+  }
+
   try {
-    dataStatus.value = await apiGet("/api/data/status");
+    const status = await apiGet("/api/data/status");
+    dataStatus.value = status;
+    setCache('data_status', status);
   } catch (err) {
-    dataStatus.value = { available: false, error: err.message };
+    if (!cachedStatus) {
+      dataStatus.value = { available: false, error: err.message };
+    }
   }
 }
 

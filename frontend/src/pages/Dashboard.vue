@@ -1,4 +1,14 @@
 <template>
+  <!-- Auto-refresh indicator -->
+  <div v-if="isRefreshing" class="refresh-indicator">
+    <span class="refresh-spinner">●</span>
+    <span>正在更新数据...</span>
+  </div>
+  <!-- AI report generation indicator -->
+  <div v-if="isGeneratingReport" class="refresh-indicator ai">
+    <span class="refresh-spinner">●</span>
+    <span>正在生成AI日报...</span>
+  </div>
   <div class="grid three">
     <div v-for="item in metrics" :key="item.label" class="metric-card" :class="getMetricClass(item)">
       <div class="metric-icon-wrap" :class="getMetricClass(item)"><Icon :name="item.icon" :size="20" /></div>
@@ -9,7 +19,7 @@
   <div class="stack-layout">
     <Card title="风险优先级" icon="warning" tone="danger">
       <template #actions>
-        <button class="btn" @click="load">刷新</button>
+        <button class="btn" :disabled="isRefreshing" @click="load(false)">{{ isRefreshing ? '刷新中...' : '刷新' }}</button>
       </template>
       <div v-for="item in advice" :key="item.name" class="risk-item" :class="riskClass(item.risk_level)">
         <span class="risk-tag" :class="riskClass(item.risk_level)">{{ item.risk_level }}</span>
@@ -19,8 +29,8 @@
     </Card>
     <Card title="最新 AI 日报" icon="ai" tone="primary">
       <template #actions>
-        <button class="btn" @click="load">刷新</button>
-        <button class="btn primary" @click="generateDailyReport">生成日报</button>
+        <button class="btn" :disabled="isRefreshing" @click="load(false)">{{ isRefreshing ? '刷新中...' : '刷新' }}</button>
+        <button class="btn primary" :disabled="isRefreshing" @click="generateDailyReport">生成日报</button>
       </template>
       <div v-if="keyHighlights.length" class="key-highlights">
         <div v-for="h in keyHighlights" :key="h.label" class="highlight-card" :class="h.tone">
@@ -40,13 +50,18 @@ import Icon from "../components/Icons.vue";
 import Card from "../components/Card.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
+import { getCache, setCache } from "../services/cache";
 import { money, pct, riskClass } from "../services/format";
 
 const emit = defineEmits(["toast"]);
 const summary = ref({});
 const advice = ref([]);
 const reports = ref([]);
+const isRefreshing = ref(false);
+const isGeneratingReport = ref(false);
 let refreshTimer = null;
+let reportTimer = null;
+let refreshCounter = 0;
 
 const metrics = computed(() => [
   { label: "持仓数量", value: summary.value.position_count || 0, icon: "holdings", tone: "primary", type: "neutral" },
@@ -91,37 +106,84 @@ const keyHighlights = computed(() => {
   return highlights;
 });
 
-async function load() {
+async function load(showNotification = false, useCache = true) {
+  // Load cached data first if available (for immediate display)
+  if (useCache && !showNotification) {
+    const cachedSummary = getCache('dashboard_summary');
+    const cachedAdvice = getCache('dashboard_advice');
+    const cachedReports = getCache('dashboard_reports');
+
+    if (cachedSummary) summary.value = cachedSummary;
+    if (cachedAdvice) advice.value = cachedAdvice;
+    if (cachedReports) reports.value = cachedReports;
+  }
+
+  if (showNotification) {
+    isRefreshing.value = true;
+  }
+
   try {
-    const [s, a, r] = await Promise.all([apiGet("/api/summary"), apiGet("/api/advice"), apiGet("/api/analysis/reports")]);
+    // Fetch fresh data
+    const [s, a, r] = await Promise.all([
+      apiGet("/api/summary"),
+      apiGet("/api/advice"),
+      apiGet("/api/analysis/reports?report_type=daily")
+    ]);
+
+    // Update state and cache
     summary.value = s;
     advice.value = a;
     reports.value = r;
+
+    setCache('dashboard_summary', s);
+    setCache('dashboard_advice', a);
+    setCache('dashboard_reports', r);
+
+    if (showNotification) {
+      emit("toast", "数据已自动更新");
+    }
   } catch (err) {
     emit("toast", err.message);
+  } finally {
+    isRefreshing.value = false;
   }
 }
 
 async function generateDailyReport() {
+  isGeneratingReport.value = true;
   try {
     await apiPost("/api/analysis/daily");
     await load();
     emit("toast", "AI日报已生成");
   } catch (err) {
     emit("toast", err.message);
+  } finally {
+    isGeneratingReport.value = false;
   }
 }
 
 function startRefreshTimer() {
   stopRefreshTimer();
-  // Refresh every minute (same as price updates)
-  refreshTimer = setInterval(load, 60000);
+  // Quick data refresh every minute
+  refreshTimer = setInterval(() => {
+    refreshCounter++;
+    load(true);
+    // Generate AI report every 10 minutes (after 10 quick refreshes)
+    if (refreshCounter >= 10) {
+      refreshCounter = 0;
+      generateDailyReport();
+    }
+  }, 60000);
 }
 
 function stopRefreshTimer() {
   if (refreshTimer) {
     clearInterval(refreshTimer);
     refreshTimer = null;
+  }
+  if (reportTimer) {
+    clearInterval(reportTimer);
+    reportTimer = null;
   }
 }
 
@@ -131,6 +193,38 @@ onBeforeUnmount(stopRefreshTimer);
 </script>
 
 <style scoped>
+/* Refresh indicator */
+.refresh-indicator {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: var(--primary);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.refresh-spinner {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Balanced grid - equal height cards */
 .grid.three {
   grid-template-columns: repeat(3, minmax(180px, 1fr));

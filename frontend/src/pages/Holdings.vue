@@ -1,10 +1,15 @@
 <template>
+  <!-- Auto-refresh indicator -->
+  <div v-if="autoRefreshing" class="refresh-indicator">
+    <span class="refresh-spinner">●</span>
+    <span>正在更新现价...</span>
+  </div>
   <Card title="持仓操作建议表" icon="holdings" tone="primary">
     <template #actions>
       <button class="btn" @click="openAddModal">新增持仓</button>
       <button class="btn" :disabled="rebuilding" @click="rebuild">{{ rebuilding ? '生成中...' : '本地规则建议' }}</button>
       <button class="btn primary" :disabled="aiLoading" @click="generateAiAdvice">{{ aiLoading ? '分析中...' : 'AI生成建议' }}</button>
-      <button class="btn" :disabled="refreshing" @click="manualRefreshPrices">{{ refreshing ? '更新中...' : '刷新现价' }}</button>
+      <button class="btn" :disabled="refreshing || autoRefreshing" @click="manualRefreshPrices">{{ refreshing || autoRefreshing ? '更新中...' : '刷新现价' }}</button>
       <a class="btn" href="/api/advice.csv">导出 CSV</a>
     </template>
     <div class="table-wrap">
@@ -117,6 +122,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import Card from "../components/Card.vue";
 import { apiDelete, apiGet, apiPost, apiPut } from "../services/api";
+import { getCache, setCache } from "../services/cache";
 import { money, pct, riskClass } from "../services/format";
 
 function pnlClass(ratio) {
@@ -146,14 +152,26 @@ const categories = ["核心赛道", "观察仓", "弱势跟风", "高风险票",
 const rebuilding = ref(false);
 const aiLoading = ref(false);
 const refreshing = ref(false);
+const autoRefreshing = ref(false);
 let displayTimer = null;
 
-// Timer to refresh display (backend handles actual price updates)
+// Timer to refresh display and prices during trading hours
 function startDisplayTimer() {
   stopDisplayTimer();
-  // Refresh display every minute during trading hours, every 5 minutes otherwise
-  displayTimer = setInterval(() => {
-    load();
+  // Refresh prices and display every minute
+  displayTimer = setInterval(async () => {
+    autoRefreshing.value = true;
+    try {
+      const result = await apiPost("/api/positions/refresh-prices");
+      await load();
+      if (result.updated > 0) {
+        emit("toast", `已自动更新 ${result.updated} 只持仓现价`);
+      }
+    } catch (err) {
+      // Silent fail for auto-refresh
+    } finally {
+      autoRefreshing.value = false;
+    }
   }, 60000);
 }
 
@@ -186,8 +204,25 @@ const form = reactive({ id: 0, symbol: "", name: "", quantity: 100, cost_price: 
 const showDeleteConfirm = ref(false);
 const deleteTarget = ref(null);
 
-async function load() {
-  advice.value = await apiGet("/api/advice");
+async function load(useCache = true) {
+  // Load cached data first for immediate display
+  if (useCache) {
+    const cachedAdvice = getCache('holdings_advice');
+    if (cachedAdvice) advice.value = cachedAdvice;
+  }
+
+  // Fetch fresh data
+  try {
+    const data = await apiGet("/api/advice");
+    advice.value = data;
+    setCache('holdings_advice', data);
+  } catch (err) {
+    // If fetch fails and we have cache, keep using cache
+    const cachedAdvice = getCache('holdings_advice');
+    if (cachedAdvice && advice.value.length === 0) {
+      advice.value = cachedAdvice;
+    }
+  }
 }
 
 async function rebuild() {
@@ -297,6 +332,38 @@ onBeforeUnmount(stopDisplayTimer);
 </script>
 
 <style scoped>
+/* Refresh indicator */
+.refresh-indicator {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: var(--primary);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.refresh-spinner {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Table styles */
 .table-wrap {
   max-height: calc(100vh - 280px);
