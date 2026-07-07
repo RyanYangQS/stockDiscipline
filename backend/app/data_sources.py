@@ -49,8 +49,64 @@ def _login_bs():
     return bs
 
 
+def fetch_eastmoney_daily_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, Any]]:
+    """Fetch daily K-line data from Eastmoney API (includes today during trading hours)."""
+    import json
+    import subprocess
+
+    if not symbol:
+        symbol = _search_stock_code(name)
+    secid = _eastmoney_secid(symbol)
+    if not secid:
+        return []
+
+    # Use curl with IPv4 only (IPv6 causes connection issues)
+    # Use minimal fields to avoid URL encoding issues
+    url = f"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid={secid}&klt=101&fqt=1&lmt={min(days, 500)}"
+
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "-4", "--max-time", "15", url],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if result.returncode != 0 or not result.stdout:
+            return []
+
+        payload = json.loads(result.stdout)
+        data = payload.get("data") or {}
+        klines = data.get("klines") or []
+        stock_name = name or data.get("name") or ""
+
+        bars = []
+        for row in klines:
+            parts = row.split(",")
+            if len(parts) < 11:
+                continue
+            bars.append({
+                "symbol": symbol,
+                "name": stock_name,
+                "trade_date": parts[0],
+                "open_price": float(parts[1] or 0),
+                "close_price": float(parts[2] or 0),
+                "high_price": float(parts[3] or 0),
+                "low_price": float(parts[4] or 0),
+                "volume": float(parts[5] or 0) * 100,  # Convert hands to shares
+                "amount": float(parts[6] or 0),
+                "amplitude": float(parts[7] or 0),
+                "change_pct": float(parts[8] or 0),
+                "change_value": float(parts[9] or 0),
+                "turnover_rate": float(parts[10] or 0),
+            })
+        return bars
+    except Exception as e:
+        logger.error(f"Eastmoney daily kline error: {e}")
+        return []
+
+
 def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, Any]]:
-    """Fetch K-line data from Baostock.
+    """Fetch K-line data - uses Eastmoney during trading hours for today's data.
 
     Args:
         symbol: Stock code (e.g., "sh.600000" or "sz.300750")
@@ -60,6 +116,13 @@ def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, A
     Returns:
         List of K-line bars with OHLCV data
     """
+    # During trading hours, use Eastmoney to get today's data
+    if is_trading_hours():
+        bars = fetch_eastmoney_daily_kline(symbol, name, days)
+        if bars:
+            return bars
+
+    # Outside trading hours, use Baostock (stable, historical data)
     bs = _login_bs()
     if not bs:
         return []
@@ -133,9 +196,107 @@ def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, A
         return []
 
 
+def fetch_eastmoney_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
+    """Fetch real-time quote from Eastmoney API (works during trading hours)."""
+    import json
+    import urllib.request
+    import urllib.parse
+
+    if not symbol:
+        symbol = _search_stock_code(name)
+    secid = _eastmoney_secid(symbol)
+    if not secid:
+        return None
+
+    params = urllib.parse.urlencode({
+        "secid": secid,
+        "fields": "f43,f44,f45,f46,f47,f48,f50,f51,f55,f57,f58,f60",
+    })
+    url = f"https://push2.eastmoney.com/api/qt/stock/get?{params}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://quote.eastmoney.com/",
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        response = urllib.request.urlopen(req, timeout=10)
+        payload = json.loads(response.read().decode("utf-8"))
+        data = payload.get("data") or {}
+        if not data:
+            return None
+
+        # Parse Eastmoney fields (all prices are in cents)
+        # f43: 最新价(cents), f44: 最高(cents), f45: 最低(cents), f46: 今开(cents)
+        # f47: 成交量(手), f48: 成交额
+        # f50: 涨跌额(cents), f55: 换手率, f57: 股票代码, f58: 股票名称
+        # f60: 昨收(cents)
+        current_price = float(data.get("f43", 0) or 0) / 100
+        high_price = float(data.get("f44", 0) or 0) / 100
+        low_price = float(data.get("f45", 0) or 0) / 100
+        open_price = float(data.get("f46", 0) or 0) / 100
+        volume_hands = float(data.get("f47", 0) or 0)
+        amount = float(data.get("f48", 0) or 0)
+        turnover_rate = float(data.get("f55", 0) or 0)
+        stock_code = data.get("f57") or ""
+        stock_name = data.get("f58") or name
+        prev_close = float(data.get("f60", 0) or 0) / 100
+
+        if current_price <= 0:
+            return None
+
+        # Calculate change_pct manually (f51 seems unreliable)
+        change_pct = ((current_price - prev_close) / prev_close * 100) if prev_close > 0 else 0
+
+        return {
+            "symbol": stock_code,
+            "name": stock_name,
+            "current_price": current_price,
+            "change_pct": round(change_pct, 2),
+            "volume": volume_hands * 100,  # Convert hands to shares
+            "amount": amount,
+            "high_price": high_price,
+            "low_price": low_price,
+            "open_price": open_price,
+            "prev_close": prev_close,
+            "turnover_rate": turnover_rate,
+            "source": "eastmoney_realtime",
+        }
+    except Exception as e:
+        logger.error(f"Eastmoney realtime quote error: {e}")
+        return None
+
+
+def is_trading_hours() -> bool:
+    """Check if current time is within China A-share trading hours or lunch break.
+    Returns True during the entire trading day (9:30-15:00) including lunch break,
+    because Eastmoney should have today's partial data during this period.
+    """
+    from datetime import datetime, time
+    now = datetime.now()
+    current_time = now.time()
+    weekday = now.weekday()
+
+    if weekday >= 5:  # Weekend
+        return False
+
+    # Entire trading day: 9:30-15:00 (including lunch break 11:30-13:00)
+    # During this period, Eastmoney should have today's data (at least morning session)
+    if time(9, 30) <= current_time <= time(15, 0):
+        return True
+
+    return False
+
+
 def fetch_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
-    """Fetch current realtime quote (using latest daily data as proxy)."""
-    bars = fetch_kline(symbol, name, days=1)
+    """Fetch current realtime quote - uses Eastmoney during trading hours, Baostock otherwise."""
+    # During trading hours, use Eastmoney for real-time prices
+    if is_trading_hours():
+        quote = fetch_eastmoney_realtime_quote(symbol, name)
+        if quote and quote.get("current_price", 0) > 0:
+            return quote
+
+    # Outside trading hours, use Baostock daily data as fallback
+    bars = fetch_kline(symbol, name, days=5)
     if bars:
         latest = bars[-1]
         prev_close = bars[-2]["close_price"] if len(bars) > 1 else latest["close_price"]
@@ -151,6 +312,8 @@ def fetch_realtime_quote(symbol: str, name: str = "") -> dict[str, Any] | None:
             "low_price": latest["low_price"],
             "open_price": latest["open_price"],
             "prev_close": prev_close,
+            "turnover_rate": latest.get("turnover_rate", 0),
+            "source": "baostock_daily",
         }
     return None
 

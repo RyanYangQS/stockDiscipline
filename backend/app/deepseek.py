@@ -158,15 +158,53 @@ def build_volume_analysis_prompt(stock_name: str, metrics: dict[str, Any], analy
 
 def build_daily_prompt(context: dict[str, Any]) -> str:
     compact = json.dumps(context, ensure_ascii=False, indent=2)
-    return f"""你是一个严格执行交易纪律的个人股票量能分析助手。
+    return f"""你是一个严格执行交易纪律的个人持仓管理助手。
 
-请根据以下数据输出每日持仓操作分析，要求：
-1. 只围绕量能、消息面、持仓纪律、K线成交结构分析。
-2. 对每只持仓给出：情景判断、风险等级、今日动作、减仓触发、止损触发、是否允许加仓。
-3. 明确识别恐慌性下跌、主力出货、主力洗盘、利好兑现、利空释放。
-4. 不要给确定性预测，不要承诺收益。
-5. 弱势跟风票默认禁止加仓；触发纪律时卖出建议优先于买入理由。
-6. 最后给出明日盘前检查清单。
+这是总览页“最新 AI 日报”，只能输出总体持仓纪律建议。不要写个股K线技术分析，不要逐根K线分析，不要长篇解释。
+
+请根据以下数据输出简短、可执行的日报，格式固定：
+
+# 每日持仓纪律建议
+## 总体
+- 用 1-2 条说明当前组合风险、仓位态度、是否需要降风险。
+
+## 今日动作
+- 每只持仓只写一行：股票名：持有/减仓/止损/禁止加仓/观察 + 触发条件。
+
+## 纪律红线
+- 写 2-4 条今天必须遵守的交易纪律。
+
+要求：
+1. 触发纪律时，卖出/减仓优先于买入理由。
+2. 弱势跟风票默认禁止加仓；深度浮亏禁止扩大仓位。
+3. 可以提及消息面和量能风险，但不要展开成个股K线量能报告。
+4. 不给确定性预测，不承诺收益。
+
+输入数据：
+{compact}
+"""
+
+
+def build_market_prompt(context: dict[str, Any]) -> str:
+    compact = json.dumps(context, ensure_ascii=False, indent=2)
+    return f"""你是一个谨慎的A股消息面与市场热点分析助手。
+
+这是“智能市场分析”页面的报告，只分析消息面、市场热点、政策事件、行业变化及其对当前持仓的影响。不要输出个股K线量能分析，不要写买卖点技术报告，不要逐根K线解释。
+
+请按以下格式输出，内容尽量短而可执行：
+
+# 市场消息面分析
+## 今日关键信息
+- 归纳 3-5 条市场热点、政策、事件或风险。
+
+## 对持仓的影响
+- 每只受影响持仓一行：股票名：利好/利空/中性/待确认 + 影响逻辑 + 今日应对。
+
+## 风险识别
+- 明确标注是否存在恐慌性下跌、主力出货、主力洗盘、利好兑现、利空释放等场景；没有证据时写“未确认”。
+
+## 交易纪律建议
+- 给出 3-5 条可执行建议，必须包含不追涨、不补弱、止损/减仓触发优先。
 
 输入数据：
 {compact}
@@ -469,6 +507,7 @@ def call_deepseek(
     base_url: str | None = None,
     transport: Transport = default_transport,
     timeout: int = 40,
+    report_type: str = "daily",
 ) -> DeepSeekResult:
     # Try to load active config from database first
     db_config = load_llm_config()
@@ -484,14 +523,15 @@ def call_deepseek(
     key = api_key if api_key is not None else DEEPSEEK_API_KEY
     selected_model = model or DEEPSEEK_MODEL
     selected_base_url = (base_url or DEEPSEEK_BASE_URL).rstrip("/")
-    prompt = build_daily_prompt(context)
+    prompt = build_market_prompt(context) if report_type == "market" else build_daily_prompt(context)
+    local_builder = build_local_market_report if report_type == "market" else build_local_report
 
     if not key:
         return DeepSeekResult(
             provider="local",
-            model="local-discipline-summary",
+            model="local-market-summary" if report_type == "market" else "local-discipline-summary",
             status="missing_api_key",
-            content=build_local_report(context),
+            content=local_builder(context),
             raw_response="",
         )
 
@@ -523,7 +563,7 @@ def call_deepseek(
             provider="deepseek",
             model=selected_model,
             status="error",
-            content=f"DeepSeek 调用失败：{exc}\n\n以下为本地纪律分析：\n\n{build_local_report(context)}",
+            content=f"DeepSeek 调用失败：{exc}\n\n以下为本地分析：\n\n{local_builder(context)}",
             raw_response=str(exc),
         )
 
@@ -558,3 +598,38 @@ def build_local_report(context: dict[str, Any]) -> str:
     )
     return "\n".join(lines)
 
+
+def build_local_market_report(context: dict[str, Any]) -> str:
+    news = context.get("news", [])
+    positions = context.get("positions", [])
+    market = context.get("market", [])
+    holding_news = [item for item in news if item.get("name")]
+    market_news = [item for item in news if not item.get("name")]
+    lines = ["# 市场消息面分析", ""]
+    lines.append("## 今日关键信息")
+    if market_news:
+        for item in market_news[:5]:
+            lines.append(f"- {item.get('title', '')}（{item.get('source', '未知来源')}，{item.get('sentiment', '中性')}）")
+    else:
+        lines.append("- 暂无可靠市场热点抓取结果，先按谨慎观察处理。")
+    if market:
+        lines.append(f"- 已记录市场快照 {len(market)} 条，可结合指数状态和热点板块复核。")
+    lines.append("")
+    lines.append("## 对持仓的影响")
+    for pos in positions:
+        related = [item for item in holding_news if item.get("name") == pos.get("name")]
+        if related:
+            first = related[0]
+            lines.append(f"- {pos.get('name')}：{first.get('sentiment', '中性')}，关注“{first.get('title', '')}”；未确认前不追涨。")
+        else:
+            lines.append(f"- {pos.get('name')}：暂无直接消息，按原纪律持仓，弱势票禁止补仓。")
+    lines.append("")
+    lines.append("## 风险识别")
+    lines.append("- 恐慌性下跌/主力出货/洗盘只能在价格、量能和消息共同确认后执行，不凭单条消息判断。")
+    lines.append("- 利好兑现叠加高换手放量滞涨时，优先按减仓风险处理。")
+    lines.append("")
+    lines.append("## 交易纪律建议")
+    lines.append("- 不追热点，不补弱势跟风票。")
+    lines.append("- 有硬风险公告的标的先降风险，再讨论机会。")
+    lines.append("- 所有买卖动作只按触发价执行，不做盘中情绪交易。")
+    return "\n".join(lines)

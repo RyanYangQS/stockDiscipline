@@ -17,6 +17,7 @@ from app.advice import Context, build_advice, infer_scenario, lot, money, pct, r
 from app.repository import (  # noqa: E402
     create_daily_analysis,
     create_kline,
+    create_market_analysis,
     create_news,
     create_position,
     create_volume,
@@ -278,11 +279,22 @@ class RepositoryTests(TempDatabaseMixin, unittest.TestCase):
         rebuild_advice()
         report = create_daily_analysis({"extra_note": "测试日报"})
         self.assertIn(report["provider"], {"local", "deepseek"})
+        self.assertEqual(report["report_type"], "daily")
         self.assertTrue(report["content"])
         reports = list_analysis_reports()
         self.assertEqual(len(reports), 1)
         status = deepseek_status()
         self.assertIn("configured", status)
+
+    def test_analysis_reports_are_filtered_by_type(self):
+        seed_if_empty()
+        rebuild_advice()
+        daily = create_daily_analysis({"extra_note": "测试日报"})
+        market = create_market_analysis({"extra_note": "测试市场消息面"})
+        self.assertEqual(daily["report_type"], "daily")
+        self.assertEqual(market["report_type"], "market")
+        self.assertEqual([item["id"] for item in list_analysis_reports("daily")], [daily["id"]])
+        self.assertEqual([item["id"] for item in list_analysis_reports("market")], [market["id"]])
 
 
 class ExportAndSurfaceTests(TempDatabaseMixin, unittest.TestCase):
@@ -314,6 +326,7 @@ class ExportAndSurfaceTests(TempDatabaseMixin, unittest.TestCase):
         package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
         root_files = {path.name for path in (ROOT / "frontend").iterdir() if path.is_file()}
         app = (ROOT / "frontend" / "src" / "App.vue").read_text(encoding="utf-8")
+        dashboard = (ROOT / "frontend" / "src" / "pages" / "Dashboard.vue").read_text(encoding="utf-8")
         kline = (ROOT / "frontend" / "src" / "components" / "KlineChart.vue").read_text(encoding="utf-8")
         kline_page = (ROOT / "frontend" / "src" / "pages" / "KlineVolume.vue").read_text(encoding="utf-8")
         server = (ROOT / "backend" / "app" / "server.py").read_text(encoding="utf-8")
@@ -350,7 +363,13 @@ class ExportAndSurfaceTests(TempDatabaseMixin, unittest.TestCase):
         self.assertIn("/api/kline/intraday", server)
         self.assertIn("/api/advice/rebuild", holdings)
         self.assertIn("/api/news", news)
+        self.assertIn("/api/analysis/reports?report_type=daily", dashboard)
+        self.assertIn("/api/analysis/reports?report_type=market", news)
+        self.assertIn("/api/analysis/market", news)
+        self.assertIn("refreshMarketIntelligence", news)
+        self.assertIn("shouldRunScheduledRefresh", news)
         self.assertIn("/api/analysis/daily", analysis)
+        self.assertIn("/api/analysis/market", server)
 
 
 if __name__ == "__main__":

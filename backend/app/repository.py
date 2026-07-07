@@ -532,21 +532,24 @@ def build_analysis_context() -> dict[str, Any]:
 def create_daily_analysis(payload: dict[str, Any] | None = None) -> dict[str, Any]:
     payload = payload or {}
     context = build_analysis_context()
+    context["report_scope"] = "daily_holding_discipline"
     extra_note = payload.get("extra_note", "")
     if extra_note:
         context["extra_note"] = extra_note
-    result = call_deepseek(context)
+    result = call_deepseek(context, report_type="daily")
     now = utc_now()
     prompt = "" if result.provider == "local" else "see raw prompt context in build_analysis_context"
     with connect() as conn:
-        cur = conn.execute(
+        # Use INSERT OR REPLACE to update existing report for same date/type
+        conn.execute(
             """
-            INSERT INTO analysis_reports
-            (report_date, provider, model, status, prompt, content, raw_response, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO analysis_reports
+            (report_date, report_type, provider, model, status, prompt, content, raw_response, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 date.today().isoformat(),
+                "daily",
                 result.provider,
                 result.model,
                 result.status,
@@ -556,12 +559,59 @@ def create_daily_analysis(payload: dict[str, Any] | None = None) -> dict[str, An
                 now,
             ),
         )
-        row = conn.execute("SELECT * FROM analysis_reports WHERE id = ?", (cur.lastrowid,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM analysis_reports WHERE report_date = ? AND report_type = ?",
+            (date.today().isoformat(), "daily")
+        ).fetchone()
         return row_to_dict(row)
 
 
-def list_analysis_reports() -> list[dict[str, Any]]:
+def create_market_analysis(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload = payload or {}
+    context = build_analysis_context()
+    context["report_scope"] = "market_news_policy_hotspots"
+    extra_note = payload.get("extra_note", "")
+    if extra_note:
+        context["extra_note"] = extra_note
+    result = call_deepseek(context, report_type="market")
+    now = utc_now()
+    prompt = "" if result.provider == "local" else "market news analysis context in build_analysis_context"
     with connect() as conn:
+        # Use INSERT OR REPLACE to update existing report for same date/type
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO analysis_reports
+            (report_date, report_type, provider, model, status, prompt, content, raw_response, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                date.today().isoformat(),
+                "market",
+                result.provider,
+                result.model,
+                result.status,
+                prompt,
+                result.content,
+                result.raw_response,
+                now,
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM analysis_reports WHERE report_date = ? AND report_type = ?",
+            (date.today().isoformat(), "market")
+        ).fetchone()
+        return row_to_dict(row)
+
+
+def list_analysis_reports(report_type: str = "") -> list[dict[str, Any]]:
+    with connect() as conn:
+        if report_type:
+            return rows_to_dicts(
+                conn.execute(
+                    "SELECT * FROM analysis_reports WHERE report_type = ? ORDER BY id DESC LIMIT 50",
+                    (report_type,),
+                ).fetchall()
+            )
         return rows_to_dicts(conn.execute("SELECT * FROM analysis_reports ORDER BY id DESC LIMIT 50").fetchall())
 
 

@@ -133,6 +133,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS analysis_reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 report_date TEXT NOT NULL,
+                report_type TEXT NOT NULL DEFAULT 'daily',
                 provider TEXT NOT NULL DEFAULT 'local',
                 model TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'ok',
@@ -192,6 +193,44 @@ def init_db() -> None:
             # Drop old table and rename new
             conn.execute("DROP TABLE advice_records")
             conn.execute("ALTER TABLE advice_records_new RENAME TO advice_records")
+        except sqlite3.OperationalError:
+            # Table already has unique constraint or migration already done
+            pass
+        try:
+            conn.execute("ALTER TABLE analysis_reports ADD COLUMN report_type TEXT NOT NULL DEFAULT 'daily'")
+        except sqlite3.OperationalError:
+            pass
+        conn.execute(
+            """
+            UPDATE analysis_reports
+            SET report_type = 'volume'
+            WHERE prompt LIKE 'volume analysis%'
+            """
+        )
+        # Migration: add UNIQUE constraint for analysis_reports (report_date, report_type)
+        try:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS analysis_reports_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_date TEXT NOT NULL,
+                    report_type TEXT NOT NULL DEFAULT 'daily',
+                    provider TEXT NOT NULL DEFAULT 'local',
+                    model TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'ok',
+                    prompt TEXT NOT NULL DEFAULT '',
+                    content TEXT NOT NULL,
+                    raw_response TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    UNIQUE(report_date, report_type)
+                )
+            """)
+            conn.execute("""
+                INSERT OR IGNORE INTO analysis_reports_new
+                SELECT id, report_date, report_type, provider, model, status, prompt, content, raw_response, created_at
+                FROM analysis_reports
+            """)
+            conn.execute("DROP TABLE analysis_reports")
+            conn.execute("ALTER TABLE analysis_reports_new RENAME TO analysis_reports")
         except sqlite3.OperationalError:
             # Table already has unique constraint or migration already done
             pass

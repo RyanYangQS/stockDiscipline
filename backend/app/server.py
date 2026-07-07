@@ -24,6 +24,7 @@ from .repository import (
     create_daily_analysis,
     create_kline,
     create_llm_config,
+    create_market_analysis,
     create_news,
     create_position,
     create_volume,
@@ -48,7 +49,7 @@ from .repository import (
     update_llm_config,
     update_position,
 )
-from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_cls_news, scrape_sina_finance
+from .web_scraper import check_scraper_available, scrape_all_holdings_news, scrape_market_news_items
 
 
 class ApiError(Exception):
@@ -141,14 +142,19 @@ def build_realtime_kline_payload(
     days: int = 60,
     fetcher=fetch_kline,
 ) -> dict[str, Any]:
+    from datetime import date
     safe_days = max(1, min(int(days or 60), 1000))
     resolved_name, resolved_symbol = _resolve_stock_identity(name, symbol)
     bars = fetcher(resolved_symbol, resolved_name, safe_days)
     if bars:
         saved = _save_kline_bars(bars, resolved_name, resolved_symbol)
+        # Determine source based on whether today's data is included
+        today_str = date.today().strftime("%Y-%m-%d")
+        has_today = any(bar.get("trade_date") == today_str for bar in bars)
+        source = "eastmoney_realtime" if has_today else "baostock"
         return {
             "bars": bars,
-            "source": "baostock",
+            "source": source,
             "name": resolved_name,
             "symbol": resolved_symbol,
             "saved": saved,
@@ -160,7 +166,7 @@ def build_realtime_kline_payload(
         "source": "local_cache" if cached else "empty",
         "name": resolved_name,
         "symbol": resolved_symbol,
-        "message": "Baostock未返回数据，已回退本地缓存" if cached else "Baostock未返回数据，且本地缓存为空",
+        "message": "数据源未返回数据，已回退本地缓存" if cached else "数据源未返回数据，且本地缓存为空",
     }
 
 
@@ -394,9 +400,7 @@ async def scrape_news():
 
 @app.post("/api/news/scrape/market")
 async def scrape_market_news():
-    cls_news = scrape_cls_news(limit=15)
-    sina_news = scrape_sina_finance(limit=10)
-    all_news = cls_news + sina_news
+    all_news = scrape_market_news_items(limit=25)
     saved = []
     for item in all_news:
         try:
@@ -577,13 +581,18 @@ async def get_advice_csv():
 # === Analysis ===
 
 @app.get("/api/analysis/reports")
-async def get_analysis_reports():
-    return list_analysis_reports()
+async def get_analysis_reports(report_type: str = ""):
+    return list_analysis_reports(report_type=report_type)
 
 
 @app.post("/api/analysis/daily")
 async def post_daily_analysis(data: dict[str, Any] = None):
     return create_daily_analysis(data or {})
+
+
+@app.post("/api/analysis/market")
+async def post_market_analysis(data: dict[str, Any] = None):
+    return create_market_analysis(data or {})
 
 
 @app.post("/api/analysis/volume")
@@ -614,11 +623,12 @@ async def post_volume_analysis(data: dict[str, Any] = None):
         cur = conn.execute(
             """
             INSERT INTO analysis_reports
-            (report_date, provider, model, status, prompt, content, raw_response, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (report_date, report_type, provider, model, status, prompt, content, raw_response, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 date.today().isoformat(),
+                "volume",
                 result.provider,
                 result.model,
                 result.status,
