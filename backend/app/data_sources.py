@@ -579,34 +579,6 @@ def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: in
 
     return []
 
-        grouped = []
-        for index in range(0, len(minute_rows), period):
-            chunk = minute_rows[index:index + period]
-            if not chunk:
-                continue
-            prices = [item["price"] for item in chunk]
-            volume_hands = sum(item["volume_hands"] for item in chunk)
-            amount = sum(item["amount"] for item in chunk)
-            grouped.append({
-                "symbol": symbol,
-                "name": name,
-                "trade_date": f"{trade_day[:4]}-{trade_day[4:6]}-{trade_day[6:]} {chunk[-1]['time']}",
-                "open_price": prices[0],
-                "close_price": prices[-1],
-                "high_price": max(prices),
-                "low_price": min(prices),
-                "volume": volume_hands * 100,
-                "amount": amount,
-                "turnover_rate": 0,
-                "period": period,
-            })
-        return grouped[-limit:]
-    except Exception as e:
-        logger.error(f"Tencent fetch_intraday_kline error: {e}")
-        return []
-
-
-def _eastmoney_secid(symbol: str) -> str:
     code = (symbol or "").strip().lower()
     if not code:
         return ""
