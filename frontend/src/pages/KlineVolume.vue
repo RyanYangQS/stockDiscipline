@@ -292,14 +292,19 @@ async function checkDataStatus() {
 async function loadKline() {
   if (!selectedName.value) return;
 
-  // Try to load cached bars for this stock first (优先持久化缓存)
-  const cachedBars = await getPersistentCache(`kline_bars_${selectedName.value}`);
-  const cachedQuote = await getPersistentCache(`kline_quote_${selectedName.value}`);
+  // 只在日K模式下加载缓存数据，使用daily专用缓存键
+  if (chartMode.value === 'daily') {
+    // Try to load cached bars for this stock first (优先持久化缓存)
+    const cachedBars = await getPersistentCache(`kline_daily_bars_${selectedName.value}`);
+    const cachedQuote = await getPersistentCache(`kline_quote_${selectedName.value}`);
 
-  if (cachedBars) bars.value = cachedBars;
-  if (cachedQuote) quote.value = cachedQuote;
+    if (cachedBars) bars.value = cachedBars;
+    if (cachedQuote) quote.value = cachedQuote;
 
-  await fetchDailyKline(false);
+    await fetchDailyKline(false);
+  } else {
+    await fetchMinuteKline();
+  }
 }
 
 async function onStockChange() {
@@ -307,7 +312,10 @@ async function onStockChange() {
   setCache('kline_selected_name', selectedName.value, true);
 
   // Try to load cached data for new stock first (优先持久化缓存)
-  const cachedBars = await getPersistentCache(`kline_bars_${selectedName.value}`);
+  const cacheKey = chartMode.value === 'daily' 
+    ? `kline_daily_bars_${selectedName.value}` 
+    : `kline_minute_bars_${selectedName.value}`;
+  const cachedBars = await getPersistentCache(cacheKey);
   const cachedQuote = await getPersistentCache(`kline_quote_${selectedName.value}`);
 
   if (cachedBars) {
@@ -340,8 +348,8 @@ async function fetchDailyKline(appendHistory = false) {
     const result = await apiGet(`/api/kline/realtime?${stockQuery({ days: dailyDays.value })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
-      // 使用收盘时间缓存策略
-      setCache(`kline_bars_${selectedName.value}`, result.bars, true);
+      // 使用日K专用缓存键
+      setCache(`kline_daily_bars_${selectedName.value}`, result.bars, true);
       const sourceText = result.source === "baostock" ? "实时源" : "本地缓存";
       if (!appendHistory) emit("toast", `${sourceText}加载 ${result.bars.length} 条K线数据`);
     } else {
@@ -349,7 +357,7 @@ async function fetchDailyKline(appendHistory = false) {
     }
   } catch (err) {
     // If fetch fails and we have cached bars, keep them
-    const cachedBars = await getPersistentCache(`kline_bars_${selectedName.value}`);
+    const cachedBars = await getPersistentCache(`kline_daily_bars_${selectedName.value}`);
     if (!cachedBars && !appendHistory) emit("toast", err.message);
   } finally {
     if (!appendHistory) loading.value = false;
@@ -364,7 +372,8 @@ async function fetchMinuteKline() {
     const result = await apiGet(`/api/kline/intraday?${stockQuery({ period: minutePeriod.value, limit: 240 })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
-      setCache(`kline_bars_${selectedName.value}`, result.bars, true);
+      // 使用分时专用缓存键
+      setCache(`kline_minute_bars_${selectedName.value}`, result.bars, true);
       emit("toast", `分时K线刷新 ${result.bars.length} 根`);
     } else {
       emit("toast", result.message || "未获取到分时K线数据");

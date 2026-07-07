@@ -579,6 +579,9 @@ def _fetch_tencent_intraday_kline(symbol: str, name: str, period: int, limit: in
 
     return []
 
+
+def _eastmoney_secid(symbol: str) -> str:
+    """Convert symbol to Eastmoney secid format."""
     code = (symbol or "").strip().lower()
     if not code:
         return ""

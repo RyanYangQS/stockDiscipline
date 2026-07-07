@@ -27,7 +27,8 @@ import {
   LineType,
   PolygonType,
   TooltipShowRule,
-  TooltipShowType
+  TooltipShowType,
+  YAxisType
 } from "klinecharts";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
@@ -84,8 +85,8 @@ function initChart() {
       vertical: { show: true, color: "#edf0f3", size: 1, style: LineType.Solid, dashedValue: [] }
     },
     candle: {
-      // 分时图使用线图，日K使用蜡烛图
-      type: isMinuteMode ? CandleType.Line : CandleType.CandleUpStroke,
+      // 分时图使用面积图（曲线+渐变填充），日K使用蜡烛图
+      type: isMinuteMode ? CandleType.Area : CandleType.CandleUpStroke,
       bar: {
         upColor: isMinuteMode ? "#ff1f1f" : "#ffffff",
         downColor: "#008000",
@@ -160,6 +161,9 @@ function initChart() {
       tickText: { color: "#111827", size: 12 }
     },
     yAxis: {
+      // 分时图使用百分比模式，0%在中间，上下自适应
+      type: isMinuteMode ? YAxisType.Percentage : YAxisType.Normal,
+      position: "right",
       axisLine: { show: true, color: "#9ca3af", size: 1 },
       tickText: { color: "#111827", size: 12 }
     },
@@ -251,6 +255,19 @@ function updateData() {
     if (isPrependingHistory) {
       const added = chartData.length - previousData.length;
       chart.scrollToDataIndex(Math.max(0, Math.round(previousRange.from) + added), 0);
+    } else if (props.mode === 'minute') {
+      // 分时图模式：调整柱子间距使数据填满容器
+      const containerWidth = chartEl.value?.clientWidth || 800;
+      const barCount = chartData.length;
+      if (barCount > 0) {
+        // 计算合适的柱子间距，使数据填满容器
+        const idealBarSpace = Math.max(2, Math.floor(containerWidth / barCount) - 1);
+        chart.setBarSpace(idealBarSpace);
+      }
+      chart.scrollToRealTime(0);
+      
+      // 绘制加深的0轴基准线
+      _addZeroAxisLine();
     } else {
       chart.scrollToRealTime(0);
     }
@@ -258,7 +275,45 @@ function updateData() {
   });
 }
 
+// 绘制加深的0轴基准线（分时图模式）
+function _addZeroAxisLine() {
+  if (!chart || !chartData.length) return;
+  
+  // 计算基准价（第一根数据的开盘价）
+  const basePrice = chartData[0].open;
+  if (!basePrice || basePrice <= 0) return;
+  
+  // 清除之前的0轴基准线
+  chart.removeOverlay({ name: 'zero_axis_line' });
+  
+  // 创建0轴基准线（加深的水平线）
+  chart.createOverlay({
+    name: 'zero_axis_line',
+    points: [
+      { timestamp: chartData[0].timestamp, value: basePrice },
+      { timestamp: chartData[chartData.length - 1].timestamp, value: basePrice },
+    ],
+    styles: {
+      line: {
+        style: LineType.Dashed,
+        color: '#666666',
+        size: 1.5,
+        dashedValue: [4, 4],
+      },
+      text: {
+        show: true,
+        content: '0%',
+        color: '#666666',
+        size: 12,
+        weight: 'bold',
+        family: 'Arial',
+      },
+    },
+  });
+}
+
 function handleVisibleRangeChange(range) {
+  // 分时图模式不加载更多历史数据
   if (props.mode !== "daily" || askedMoreHistory || !range || !chartData.length) return;
   if (Number(range.realFrom ?? range.from) <= 8) {
     askedMoreHistory = true;
@@ -269,6 +324,8 @@ function handleVisibleRangeChange(range) {
 // 添加买卖信号标记到K线图表
 function _addSignalAnnotations() {
   if (!chart || !chartData.length) return;
+  // 分时图模式不添加买卖信号标记
+  if (props.mode === 'minute') return;
   
   // 清除之前的标记
   chart.removeOverlay();
@@ -360,7 +417,21 @@ function tooltipLegend({ current }) {
 }
 
 function toTimestamp(value) {
-  const text = String(value || "");
+  const text = String(value || "").trim();
+  
+  // 处理"20260707 14:56"这种格式（分时数据）
+  if (/^\d{8}\s\d{2}:\d{2}/.test(text)) {
+    const datePart = text.substring(0, 8);
+    const timePart = text.substring(9);
+    const year = datePart.substring(0, 4);
+    const month = datePart.substring(4, 6);
+    const day = datePart.substring(6, 8);
+    const normalized = `${year}-${month}-${day}T${timePart}:00`;
+    const timestamp = new Date(normalized).getTime();
+    return Number.isFinite(timestamp) ? timestamp : Date.now();
+  }
+  
+  // 处理"2026-07-07"或"2026-07-07 14:56"这种格式
   const normalized = text.includes(" ") ? text.replace(" ", "T") : `${text}T00:00:00`;
   const timestamp = new Date(normalized).getTime();
   return Number.isFinite(timestamp) ? timestamp : Date.now();

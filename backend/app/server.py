@@ -193,7 +193,7 @@ def _add_buy_sell_markers(bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
         
         # 计算量比（需要至少5根K线）
         if i >= 4:
-            recent_5_volume = sum(bars[i-4:i+1]['volume'] for bars in [bars])
+            recent_5_volume = sum(b.get('volume', 0) for b in bars[i-4:i+1])
             avg_volume = recent_5_volume / 5
             current_volume = bar.get('volume', 0)
             volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
@@ -675,6 +675,11 @@ async def post_volume_analysis(data: dict[str, Any] = None):
 
     # Step 4: Save report to database
     with connect() as conn:
+        # 先删除同一天相同类型的旧报告，避免唯一约束冲突
+        conn.execute(
+            "DELETE FROM analysis_reports WHERE report_date = ? AND report_type = ?",
+            (date.today().isoformat(), "volume"),
+        )
         cur = conn.execute(
             """
             INSERT INTO analysis_reports

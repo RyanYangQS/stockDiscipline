@@ -324,9 +324,19 @@ async function doDelete() {
   emit("toast", "持仓已删除");
 }
 
-onMounted(() => {
-  load().catch((err) => emit("toast", err.message));
-  startDisplayTimer();
+onMounted(async () => {
+  try {
+    await load();
+    startDisplayTimer();
+    // 进入页面自动请求一次AI生成建议
+    if (advice.value.length > 0) {
+      generateAiAdvice().catch((err) => {
+        console.warn("自动生成AI建议失败:", err.message);
+      });
+    }
+  } catch (err) {
+    emit("toast", err.message);
+  }
 });
 
 onBeforeUnmount(stopDisplayTimer);

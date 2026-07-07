@@ -12,7 +12,7 @@ export default defineConfig({
     strictPort: false,  // Auto-find available port if 5173 is in use
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8081",
+        target: "http://127.0.0.1:8080",
         changeOrigin: true
       }
     }
