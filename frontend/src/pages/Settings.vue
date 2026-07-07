@@ -81,6 +81,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import Card from "../components/Card.vue";
 import { apiDelete, apiGet, apiPost, apiPut } from "../services/api";
+import { getCache, setCache } from "../services/cache";
 
 const emit = defineEmits(["toast"]);
 const configs = ref([]);
@@ -105,12 +106,25 @@ function onProviderChange() {
 }
 
 async function load() {
+  // Load cached data first for immediate display
+  const cachedConfigs = getCache('settings_configs');
+  const cachedStatus = getCache('settings_status');
+
+  if (cachedConfigs) configs.value = cachedConfigs;
+  if (cachedStatus) envStatus.value = cachedStatus;
+
+  // Fetch fresh data
   try {
     const [c, s] = await Promise.all([apiGet("/api/llm/configs"), apiGet("/api/settings/deepseek")]);
     configs.value = c;
     envStatus.value = s;
+    setCache('settings_configs', c);
+    setCache('settings_status', s);
   } catch (err) {
-    emit("toast", err.message);
+    // If fetch fails and no cache, show error
+    if (!cachedConfigs && !cachedStatus) {
+      emit("toast", err.message);
+    }
   }
 }
 

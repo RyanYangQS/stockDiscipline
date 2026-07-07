@@ -17,34 +17,41 @@
   </Card>
   <div class="grid">
     <Card title="持仓相关消息" icon="news" tone="primary">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>时间</th><th>标的</th><th>来源</th><th>情绪</th><th>标题</th></tr></thead>
-          <tbody>
-            <tr v-for="n in holdingsNews" :key="n.id">
-              <td>{{ n.published_at }}</td><td>{{ n.name }}</td><td>{{ n.source }}</td>
-              <td><span class="risk-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
-              <td>{{ n.title }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <template #subtitle>每只持仓显示今日最热门5条消息</template>
+      <div v-for="(items, stockName) in groupedHoldingsNews" :key="stockName" class="news-group">
+        <div class="stock-name-header">{{ stockName }}</div>
+        <div class="table-wrap compact">
+          <table>
+            <thead><tr><th>时间</th><th>来源</th><th>情绪</th><th>标题</th></tr></thead>
+            <tbody>
+              <tr v-for="n in items" :key="n.id">
+                <td class="time-col">{{ n.published_at?.slice(0, 16) || '-' }}</td>
+                <td class="source-col">{{ n.source }}</td>
+                <td><span class="sentiment-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
+                <td class="title-col">{{ n.title }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <p v-if="!holdingsNews.length" class="text-muted">暂无持仓相关消息</p>
+      <p v-if="!Object.keys(groupedHoldingsNews).length" class="text-muted">暂无持仓相关消息</p>
     </Card>
     <Card title="市场热点" icon="chart" tone="default">
+      <template #subtitle>显示最热门10条消息</template>
       <div class="table-wrap">
         <table>
           <thead><tr><th>时间</th><th>来源</th><th>情绪</th><th>标题</th></tr></thead>
           <tbody>
-            <tr v-for="n in marketNews" :key="n.id">
-              <td>{{ n.published_at }}</td><td>{{ n.source }}</td>
-              <td><span class="risk-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
-              <td>{{ n.title }}</td>
+            <tr v-for="n in topMarketNews" :key="n.id">
+              <td class="time-col">{{ n.published_at?.slice(0, 16) || '-' }}</td>
+              <td class="source-col">{{ n.source }}</td>
+              <td><span class="sentiment-tag" :class="sentimentClass(n.sentiment)">{{ n.sentiment }}</span></td>
+              <td class="title-col">{{ n.title }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p v-if="!marketNews.length" class="text-muted">暂无市场热点消息</p>
+      <p v-if="!topMarketNews.length" class="text-muted">暂无市场热点消息</p>
     </Card>
   </div>
   <Card title="AI 分析报告" icon="ai" tone="default">
@@ -67,6 +74,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Card from "../components/Card.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
+import { getCache, setCache } from "../services/cache";
 
 const emit = defineEmits(["toast"]);
 const status = ref({});
@@ -84,17 +92,48 @@ const statusText = computed(() => {
   return lastUpdatedAt.value ? `${base}；上次更新：${lastUpdatedAt.value}` : base;
 });
 
-// Separate news: holdings-related vs market-wide
-const holdingsNews = computed(() => news.value.filter(n => n.name && n.name.trim()));
-const marketNews = computed(() => news.value.filter(n => !n.name || !n.name.trim()));
+// Group holdings news by stock, show top 5 per stock (ranked by importance)
+const groupedHoldingsNews = computed(() => {
+  const grouped = {};
+  for (const n of news.value) {
+    if (n.name && n.name.trim()) {
+      if (!grouped[n.name]) grouped[n.name] = [];
+      grouped[n.name].push(n);
+    }
+  }
+  // Sort each group by importance (descending) and limit to 5
+  for (const name in grouped) {
+    grouped[name].sort((a, b) => (b.importance || 50) - (a.importance || 50));
+    grouped[name] = grouped[name].slice(0, 5);
+  }
+  return grouped;
+});
+
+// Market news: show top 10 most important
+const topMarketNews = computed(() => {
+  const market = news.value.filter(n => !n.name || !n.name.trim());
+  market.sort((a, b) => (b.importance || 50) - (a.importance || 50));
+  return market.slice(0, 10);
+});
 
 function sentimentClass(sentiment) {
-  if (sentiment.includes('利空') || sentiment.includes('恐慌') || sentiment.includes('风险')) return 'danger';
-  if (sentiment.includes('利好')) return 'success';
+  // 利空用绿色(下跌色), 利好用红色(上涨色), 与A股涨跌色一致
+  if (sentiment.includes('利空') || sentiment.includes('恐慌') || sentiment.includes('风险')) return 'negative';
+  if (sentiment.includes('利好')) return 'positive';
   return 'default';
 }
 
 async function load() {
+  // Load cached data first for immediate display
+  const cachedStatus = getCache('newscenter_status');
+  const cachedNews = getCache('newscenter_news');
+  const cachedReports = getCache('newscenter_reports');
+
+  if (cachedStatus) status.value = cachedStatus;
+  if (cachedNews) news.value = cachedNews;
+  if (cachedReports) reports.value = cachedReports;
+
+  // Fetch fresh data in background
   try {
     const [s, n, r] = await Promise.all([
       apiGet("/api/settings/deepseek"),
@@ -104,8 +143,15 @@ async function load() {
     status.value = s;
     news.value = n;
     reports.value = r;
+
+    setCache('newscenter_status', s);
+    setCache('newscenter_news', n);
+    setCache('newscenter_reports', r);
   } catch (err) {
-    emit("toast", err.message);
+    // If fetch fails, keep using cached data
+    if (!cachedNews && !cachedReports) {
+      emit("toast", err.message);
+    }
   }
 }
 
@@ -260,6 +306,82 @@ onBeforeUnmount(stopAutoRefresh);
 
 .status-error {
   color: var(--danger);
+}
+
+/* News grouping styles */
+.news-group {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.news-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.stock-name-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: var(--primary);
+  color: white;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* Sentiment tags: 利空=green(下跌), 利好=red(上涨) */
+.sentiment-tag {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.sentiment-tag.positive {
+  background: #dc2626;
+  color: white;
+}
+
+.sentiment-tag.negative {
+  background: #16a34a;
+  color: white;
+}
+
+.sentiment-tag.default {
+  background: #6b7280;
+  color: white;
+}
+
+/* Compact table */
+.table-wrap.compact {
+  max-height: 200px;
+}
+
+.table-wrap.compact table {
+  font-size: 12px;
+}
+
+.table-wrap.compact th,
+.table-wrap.compact td {
+  padding: 6px 8px;
+}
+
+.time-col {
+  width: 100px;
+}
+
+.source-col {
+  width: 80px;
+}
+
+.title-col {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .report-card {

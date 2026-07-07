@@ -150,7 +150,7 @@ import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
-import { getCache, setCache } from "../services/cache";
+import { getCache, setCache, clearCache } from "../services/cache";
 
 const emit = defineEmits(["toast"]);
 const positions = ref([]);
@@ -243,9 +243,16 @@ function getRiskClass(level) {
 async function loadPositions() {
   // Load cached positions first for immediate display
   const cachedPositions = getCache('kline_positions');
+  const cachedSelectedName = getCache('kline_selected_name');
+
   if (cachedPositions) {
     positions.value = cachedPositions;
-    selectedName.value = cachedPositions[0]?.name || "";
+    // Restore previously selected stock name if available and valid
+    if (cachedSelectedName && cachedPositions.some(p => p.name === cachedSelectedName)) {
+      selectedName.value = cachedSelectedName;
+    } else {
+      selectedName.value = cachedPositions[0]?.name || "";
+    }
   }
 
   // Fetch fresh data
@@ -283,16 +290,45 @@ async function checkDataStatus() {
 
 async function loadKline() {
   if (!selectedName.value) return;
+
+  // Try to load cached bars for this stock first
+  const cachedBars = getCache(`kline_bars_${selectedName.value}`, 60000); // 1 minute cache
+  const cachedQuote = getCache(`kline_quote_${selectedName.value}`, 60000);
+
+  if (cachedBars) bars.value = cachedBars;
+  if (cachedQuote) quote.value = cachedQuote;
+
   await fetchDailyKline(false);
 }
 
 async function onStockChange() {
-  bars.value = [];
-  quote.value = null;
+  // Save selected stock name to cache
+  setCache('kline_selected_name', selectedName.value);
+
+  // Try to load cached data for new stock first
+  const cachedBars = getCache(`kline_bars_${selectedName.value}`, 60000);
+  const cachedQuote = getCache(`kline_quote_${selectedName.value}`, 60000);
+
+  if (cachedBars) {
+    bars.value = cachedBars;
+  } else {
+    bars.value = [];
+  }
+
+  if (cachedQuote) {
+    quote.value = cachedQuote;
+  } else {
+    quote.value = null;
+  }
+
   aiReport.value = "";
   aiMetrics.value = null;
   aiSignals.value = null;
   dailyDays.value = 260;
+
+  // Clear old AI analysis cache when switching stock
+  clearCache(`kline_ai_${selectedName.value}`);
+
   await refreshChart();
 }
 
@@ -303,13 +339,16 @@ async function fetchDailyKline(appendHistory = false) {
     const result = await apiGet(`/api/kline/realtime?${stockQuery({ days: dailyDays.value })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
+      setCache(`kline_bars_${selectedName.value}`, result.bars);
       const sourceText = result.source === "baostock" ? "实时源" : "本地缓存";
-      emit("toast", `${sourceText}加载 ${result.bars.length} 条K线数据`);
+      if (!appendHistory) emit("toast", `${sourceText}加载 ${result.bars.length} 条K线数据`);
     } else {
-      emit("toast", result.message || "未获取到K线数据，请检查股票代码或Baostock连接");
+      if (!appendHistory) emit("toast", result.message || "未获取到K线数据");
     }
   } catch (err) {
-    emit("toast", err.message);
+    // If fetch fails and we have cached bars, keep them
+    const cachedBars = getCache(`kline_bars_${selectedName.value}`, 60000);
+    if (!cachedBars && !appendHistory) emit("toast", err.message);
   } finally {
     if (!appendHistory) loading.value = false;
   }
@@ -322,6 +361,7 @@ async function fetchMinuteKline() {
     const result = await apiGet(`/api/kline/intraday?${stockQuery({ period: minutePeriod.value, limit: 240 })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
+      setCache(`kline_bars_${selectedName.value}`, result.bars);
       emit("toast", `分时K线刷新 ${result.bars.length} 根`);
     } else {
       emit("toast", result.message || "未获取到分时K线数据");
@@ -386,9 +426,13 @@ function stopMinuteTimer() {
 async function refreshQuote() {
   if (!selectedName.value) return;
   try {
-    quote.value = await apiGet(`/api/quote?${stockQuery()}`);
+    const data = await apiGet(`/api/quote?${stockQuery()}`);
+    quote.value = data;
+    setCache(`kline_quote_${selectedName.value}`, data);
   } catch (err) {
-    emit("toast", err.message);
+    // If fetch fails, try to use cached quote
+    const cachedQuote = getCache(`kline_quote_${selectedName.value}`, 60000);
+    if (!cachedQuote) emit("toast", err.message);
   }
 }
 
