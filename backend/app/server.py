@@ -20,6 +20,7 @@ from .data_sources import check_akshare_available, fetch_intraday_kline, fetch_k
 from .db import connect, init_db, utc_now
 from .deepseek import call_deepseek, call_deepseek_for_volume
 from .technical_analysis import analyze_volume_signals, calculate_volume_metrics
+from .buy_sell_signal import calculate_buy_sell_signals
 from .repository import (
     create_daily_analysis,
     create_kline,
@@ -146,6 +147,11 @@ def build_realtime_kline_payload(
     safe_days = max(1, min(int(days or 60), 1000))
     resolved_name, resolved_symbol = _resolve_stock_identity(name, symbol)
     bars = fetcher(resolved_symbol, resolved_name, safe_days)
+    
+    # 为K线添加买卖信号标记
+    if bars and len(bars) >= 5:
+        bars = _add_buy_sell_markers(bars)
+    
     if bars:
         saved = _save_kline_bars(bars, resolved_name, resolved_symbol)
         # Determine source based on whether today's data is included
@@ -168,6 +174,51 @@ def build_realtime_kline_payload(
         "symbol": resolved_symbol,
         "message": "数据源未返回数据，已回退本地缓存" if cached else "数据源未返回数据，且本地缓存为空",
     }
+
+
+def _add_buy_sell_markers(bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """为K线数据添加买卖信号标记（简化算法）"""
+    if not bars or len(bars) < 5:
+        return bars
+    
+    marked_bars = []
+    for i, bar in enumerate(bars):
+        # 只对最近30根K线进行信号检测
+        if i < len(bars) - 30:
+            marked_bars.append(bar)
+            continue
+        
+        # 简化的买卖信号检测逻辑
+        signal = None
+        
+        # 计算量比（需要至少5根K线）
+        if i >= 4:
+            recent_5_volume = sum(bars[i-4:i+1]['volume'] for bars in [bars])
+            avg_volume = recent_5_volume / 5
+            current_volume = bar.get('volume', 0)
+            volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+            
+            change_pct = bar.get('change_pct', 0) or 0
+            
+            # 放量上涨 - 买入信号
+            if volume_ratio > 2.0 and change_pct > 2.5:
+                signal = "buy"
+            # 缩量下跌 - 可能买入机会
+            elif volume_ratio < 0.6 and change_pct < -2:
+                signal = "buy"
+            # 放量下跌 - 卖出信号
+            elif volume_ratio > 1.8 and change_pct < -2:
+                signal = "sell"
+            # 高位滞涨 - 卖出信号
+            elif i >= 1:
+                prev_close = bars[i-1].get('close_price', 0)
+                if prev_close > 0 and bar['close_price'] > prev_close * 1.15 and change_pct < 0.5:
+                    signal = "sell"
+        
+        marked_bar = {**bar, "signal": signal}
+        marked_bars.append(marked_bar)
+    
+    return marked_bars
 
 
 def build_intraday_kline_payload(name: str = "", symbol: str = "", period: int = 5, limit: int = 240) -> dict[str, Any]:

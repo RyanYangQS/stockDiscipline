@@ -208,6 +208,8 @@ function updateData() {
     const changeValue = close - prevClose;
     const rawVolume = Number(bar.volume) || 0;
     const volumeHands = rawVolume / 100;
+    const signal = bar.signal || null; // 买卖信号标记
+    
     return {
       timestamp: toTimestamp(bar.trade_date),
       dateText: bar.trade_date,
@@ -222,10 +224,15 @@ function updateData() {
       turnoverRate: Number(bar.turnover_rate) || 0,
       rawVolume,
       volume: volumeHands,
-      turnover: Number(bar.amount || 0)
+      turnover: Number(bar.amount || 0),
+      signal
     };
   });
   chart.applyNewData(chartData);
+  
+  // 添加买卖信号标记
+  _addSignalAnnotations();
+  
   const isPrependingHistory =
     previousData.length > 0 &&
     chartData.length > previousData.length &&
@@ -252,6 +259,56 @@ function handleVisibleRangeChange(range) {
     askedMoreHistory = true;
     emit("requestMoreHistory");
   }
+}
+
+// 添加买卖信号标记到K线图表
+function _addSignalAnnotations() {
+  if (!chart || !chartData.length) return;
+  
+  // 清除之前的标记
+  chart.removeOverlay();
+  
+  // 为每根有信号的K线添加标记
+  chartData.forEach((item, index) => {
+    if (!item.signal) return;
+    
+    const isBuy = item.signal === "buy";
+    const color = isBuy ? "#26a69a" : "#ef5350"; // 买入绿色，卖出红色
+    const position = isBuy ? "low" : "high"; // 买入在下方，卖出在上方
+    const value = isBuy ? item.low - (item.high - item.low) * 0.1 : item.high + (item.high - item.low) * 0.1;
+    
+    // 创建箭头标记
+    chart.createOverlay({
+      points: [
+        {
+          timestamp: item.timestamp,
+          value: value,
+        },
+      ],
+      styles: {
+        symbol: {
+          type: isBuy ? 'triangle' : 'triangle',
+          attrs: {
+            fill: color,
+            stroke: color,
+            lineWidth: 2,
+          },
+          position: position,
+          offset: [0, isBuy ? 8 : -8],
+          size: [12, 12],
+        },
+        text: {
+          show: true,
+          content: isBuy ? '买入' : '卖出',
+          color: color,
+          size: 12,
+          family: 'Arial',
+          weight: 'bold',
+          offset: [0, isBuy ? 20 : -20],
+        },
+      },
+    });
+  });
 }
 
 function handleChartMouseMove(event) {
