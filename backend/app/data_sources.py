@@ -106,7 +106,7 @@ def fetch_eastmoney_daily_kline(symbol: str, name: str = "", days: int = 60) -> 
 
 
 def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, Any]]:
-    """Fetch K-line data - uses Eastmoney during trading hours for today's data.
+    """Fetch K-line data - uses Eastmoney during trading hours and after market close for today's data.
 
     Args:
         symbol: Stock code (e.g., "sh.600000" or "sz.300750")
@@ -116,13 +116,19 @@ def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, A
     Returns:
         List of K-line bars with OHLCV data
     """
-    # During trading hours, use Eastmoney to get today's data
-    if is_trading_hours():
-        bars = fetch_eastmoney_daily_kline(symbol, name, days)
-        if bars:
+    # Always try Eastmoney first for today's data (both during and after trading hours)
+    # This ensures we get the latest completed bar after market close
+    bars = fetch_eastmoney_daily_kline(symbol, name, days)
+    if bars and len(bars) > 0:
+        # Check if we got today's data
+        today_str = date.today().strftime("%Y-%m-%d")
+        has_today = any(bar.get("trade_date") == today_str for bar in bars)
+        
+        if has_today or is_trading_hours():
+            logger.info(f"Eastmoney daily kline success: {symbol} {len(bars)} bars (has today: {has_today})")
             return bars
 
-    # Outside trading hours, use Baostock (stable, historical data)
+    # If Eastmoney failed or no today's data after market close, use Baostock for historical data
     bs = _login_bs()
     if not bs:
         return []
@@ -185,6 +191,7 @@ def fetch_kline(symbol: str, name: str = "", days: int = 60) -> list[dict[str, A
                 })
 
         bs.logout()
+        logger.info(f"Baostock daily kline success: {symbol} {len(bars)} bars")
         return bars
 
     except Exception as e:

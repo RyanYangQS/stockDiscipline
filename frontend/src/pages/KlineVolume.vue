@@ -23,7 +23,9 @@
       <span>{{ chartMode === "daily" ? `已加载 ${bars.length} 根日K，右侧锁定最后交易日` : `已加载 ${bars.length} 根${minutePeriod}分钟K，自动刷新中` }}</span>
       <span v-if="loadingMore">正在加载更多历史K线...</span>
     </div>
-    <KlineChart :bars="bars" :mode="chartMode" @request-more-history="loadMoreHistory" />
+    <!-- 日K线使用KlineChart，分时使用IntradayChart -->
+    <KlineChart v-if="chartMode === 'daily'" :bars="bars" :mode="chartMode" @request-more-history="loadMoreHistory" />
+    <IntradayChart v-else :data="bars" :base-price="basePrice" />
     <p v-if="!bars.length" class="text-muted">暂无K线数据，请点击"刷新K线"</p>
   </Card>
   <Card v-if="aiMetrics || aiReport" title="AI量能分析报告" icon="ai" tone="primary">
@@ -148,6 +150,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Card from "../components/Card.vue";
 import KlineChart from "../components/KlineChart.vue";
+import IntradayChart from "../components/IntradayChart.vue";
 import MarkdownRender from "../components/MarkdownRender.vue";
 import { apiGet, apiPost } from "../services/api";
 import { getCache, setCache, clearCache, getPersistentCache } from "../services/cache";
@@ -167,6 +170,7 @@ const aiSignals = ref(null);
 const chartMode = ref("daily");
 const dailyDays = ref(260);
 const minutePeriod = ref(5);
+const basePrice = ref(0); // 分时图基准价（昨日收盘价）
 let minuteTimer = null;
 const selectedPosition = computed(() => positions.value.find((item) => item.name === selectedName.value) || null);
 
@@ -359,10 +363,22 @@ async function fetchMinuteKline() {
   if (!selectedName.value) return;
   loading.value = true;
   try {
+    // 先获取日K数据，提取昨日收盘价作为基准价
+    const dailyResult = await apiGet(`/api/kline/realtime?${stockQuery({ days: 2 })}`);
+    if (dailyResult.bars && dailyResult.bars.length >= 2) {
+      // 取前一天的收盘价作为基准价
+      const yesterdayBar = dailyResult.bars[dailyResult.bars.length - 2];
+      basePrice.value = yesterdayBar.close_price;
+    } else if (dailyResult.bars && dailyResult.bars.length === 1) {
+      // 如果只有一根K线，用开盘价作为基准价
+      basePrice.value = dailyResult.bars[0].open_price;
+    }
+    
+    // 获取分时K线数据
     const result = await apiGet(`/api/kline/intraday?${stockQuery({ period: minutePeriod.value, limit: 240 })}`);
     if (result.bars && result.bars.length) {
       bars.value = result.bars;
-      setCache(`kline_bars_${selectedName.value}`, result.bars);
+      setCache(`kline_bars_${selectedName.value}`, result.bars, true);
       emit("toast", `分时K线刷新 ${result.bars.length} 根`);
     } else {
       emit("toast", result.message || "未获取到分时K线数据");
